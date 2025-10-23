@@ -1,0 +1,10 @@
+// Eksport wszystkich komponentów z jednego miejsca
+export { default as Navbar } from './Navbar'
+export { default as Sidebar } from './Sidebar'
+export { default as Hero } from './Hero'
+export { default as Card } from './Card'
+export { default as ProgressBar } from './ProgressBar'
+export { default as GameModeCard } from './GameModeCard'
+export { default as CategoryCard } from './CategoryCard'
+export { default as AchievementBadge } from './AchievementBadge'
+export { default as StatsGrid } from './StatsGrid'
