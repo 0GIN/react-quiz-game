@@ -1,15 +1,18 @@
 import '../styles/ui.css'
-import { Navbar, Sidebar, Hero, Card, ProgressBar, AchievementBadge, StatsGrid } from '../components'
+import { Hero, Card, ProgressBar, ExperienceBar, AchievementBadge, StatsGrid } from '../components'
 import flashPoint from '../assets/flash_point.png'
 
 export default function Home() {
+  // TODO: Replace with actual user data from API/context
+  const userData = {
+    level: 12,
+    currentXP: 340,
+    xpToNextLevel: 650 // Formula: 100 + (level - 1) * 50
+  }
+
   return (
-    <div className="home-root">
-      <Navbar />
-      <div className="app-frame">
-        <Sidebar />
-        <main className="main" role="main">
-          <Hero />
+    <main className="main" role="main">
+      <Hero />
 
           <section className="mosaic" aria-label="Panel informacyjny">
             {/* Twoje Misje */}
@@ -69,6 +72,11 @@ export default function Home() {
 
             {/* Statystyki z rozszerzonymi danymi */}
             <Card title="Twoje Statystyki" className="stats">
+              <ExperienceBar 
+                level={userData.level} 
+                currentXP={userData.currentXP} 
+                xpToNextLevel={userData.xpToNextLevel} 
+              />
               <StatsGrid 
                 gamesPlayed={127}
                 accuracy={82}
@@ -122,7 +130,5 @@ export default function Home() {
             </Card>
           </section>
         </main>
-      </div>
-    </div>
   )
 }
