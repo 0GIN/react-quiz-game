@@ -1,3 +1,30 @@
+/**
+ * @fileoverview Strona rejestracji nowego użytkownika
+ * 
+ * Formularz rejestracji z integracją Supabase Auth i tworzeniem profilu.
+ * 
+ * Funkcjonalność:
+ * - Walidacja wszystkich pól (username, email, hasło, potwierdzenie)
+ * - Sprawdzanie unikalności nazwy użytkownika
+ * - Tworzenie konta w Supabase Auth
+ * - Automatyczne tworzenie profilu w tabeli users
+ * - Inicjalizacja statystyk użytkownika
+ * - Przekierowanie po rejestracji
+ * 
+ * Walidacje:
+ * - Username min. 3 znaki
+ * - Hasło min. 6 znaków
+ * - Zgodność haseł
+ * - Poprawny format email
+ * 
+ * Zabezpieczenia:
+ * - Dostępna tylko dla niezalogowanych (GuestRoute)
+ * - Sprawdzanie zajętości username przed rejestracją
+ * - Obsługa błędów z API
+ * 
+ * @page
+ */
+
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';

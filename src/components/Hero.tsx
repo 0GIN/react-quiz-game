@@ -1,3 +1,17 @@
+/**
+ * @fileoverview Komponent Hero z wyborem trybu gry
+ * 
+ * Wyświetla karty z dostępnymi trybami gry:
+ * - Duel (1v1)
+ * - Squad (2v2)
+ * - Blitz (solo z 3 życiami) - jedyny aktywny tryb
+ * - Master (wyzwanie dla ekspertów)
+ * 
+ * Tylko tryb Blitz jest obecnie klikalny i prowadzi do gry.
+ * 
+ * @component
+ */
+
 import { useNavigate } from 'react-router-dom'
 import duelLogo from '../assets/duel_logo.png'
 import squadLogo from '../assets/squad_logo.png'

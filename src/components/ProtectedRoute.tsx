@@ -1,3 +1,23 @@
+/**
+ * @fileoverview Komponent ochrony tras wymagających autentykacji
+ * 
+ * Wrapper dla route'ów wymagających zalogowania użytkownika.
+ * 
+ * Funkcjonalność:
+ * - Sprawdza czy użytkownik jest zalogowany
+ * - Opcjonalnie wymaga uprawnień administratora (requireAdmin)
+ * - Przekierowuje niezalogowanych do /login
+ * - Przekierowuje użytkowników bez uprawnień admina do /
+ * - Pokazuje loader podczas ładowania stanu autentykacji
+ * 
+ * Użycie:
+ * ```tsx
+ * <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminPanel /></ProtectedRoute>} />
+ * ```
+ * 
+ * @component
+ */
+
 import { Navigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAuth } from '../contexts/AuthContext';

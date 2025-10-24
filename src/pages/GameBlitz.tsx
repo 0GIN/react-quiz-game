@@ -1,3 +1,37 @@
+/**
+ * @fileoverview Tryb gry Blitz - Solo z 3 życiami
+ * 
+ * Główny tryb gry, w którym użytkownik odpowiada na losowe pytania
+ * mając do dyspozycji 3 życia. Gra kończy się gdy:
+ * - Użytkownik straci wszystkie życia (3 błędne odpowiedzi)
+ * - Użytkownik dobrowolnie zakończy grę przyciskiem "Zakończ"
+ * 
+ * Funkcjonalność:
+ * - Losowanie pytań z różnych kategorii i poziomów trudności
+ * - System 3 żyć (błędna odpowiedź = -1 życie)
+ * - Zliczanie punktów (poprawne odpowiedzi, streak)
+ * - Mierzenie czasu odpowiedzi
+ * - Wizualne feedback (poprawna/błędna odpowiedź)
+ * - Automatyczne zapisywanie wyniku do bazy
+ * - Aktualizacja statystyk użytkownika
+ * - Integracja z systemem misji
+ * - Integracja z systemem osiągnięć
+ * 
+ * Scoring:
+ * - Poprawna odpowiedź: +10 pkt
+ * - Streak bonus: dodatkowe punkty za serie
+ * - Czas nie wpływa na punkty (stress-free)
+ * 
+ * Po zakończeniu:
+ * - Zapis wyniku do bazy (games, game_participants, game_questions, game_answers)
+ * - Aktualizacja statystyk (level, XP, Flash Points, streak, win/loss)
+ * - Aktualizacja postępu misji dziennych
+ * - Sprawdzenie i odblokowanie osiągnięć
+ * - Przekierowanie do GameResult z podsumowaniem
+ * 
+ * @page
+ */
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getRandomQuestions } from '../services/questionService';

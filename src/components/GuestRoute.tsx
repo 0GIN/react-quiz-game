@@ -1,3 +1,22 @@
+/**
+ * @fileoverview Komponent ochrony tras tylko dla gości (niezalogowanych)
+ * 
+ * Wrapper dla route'ów dostępnych tylko dla niezalogowanych użytkowników
+ * (strony logowania i rejestracji).
+ * 
+ * Funkcjonalność:
+ * - Sprawdza czy użytkownik NIE jest zalogowany
+ * - Przekierowuje zalogowanych do strony głównej (/)
+ * - Pokazuje loader podczas ładowania stanu autentykacji
+ * 
+ * Użycie:
+ * ```tsx
+ * <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
+ * ```
+ * 
+ * @component
+ */
+
 import { Navigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAuth } from '../contexts/AuthContext';

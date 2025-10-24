@@ -1,3 +1,19 @@
+/**
+ * @fileoverview Górny pasek nawigacyjny aplikacji
+ * 
+ * Wyświetla:
+ * - Logo aplikacji QuizRush
+ * - Avatar użytkownika (lub komunikat o braku logowania dla gości)
+ * - Nazwę użytkownika i Flash Points
+ * - Przycisk powiadomień
+ * - Przycisk wylogowania (dla zalogowanych)
+ * - Przyciski logowania/rejestracji (dla gości)
+ * 
+ * Dostosowuje się automatycznie do statusu użytkownika (guest/user/admin).
+ * 
+ * @component
+ */
+
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import textLogo from '../assets/text_logo.png'

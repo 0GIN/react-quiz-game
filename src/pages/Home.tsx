@@ -1,3 +1,29 @@
+/**
+ * @fileoverview Strona główna aplikacji
+ * 
+ * Główny dashboard użytkownika wyświetlający:
+ * 
+ * **Dla zalogowanych:**
+ * - Hero z wyborem trybu gry (Duel, Squad, Blitz, Master)
+ * - Pasek doświadczenia (poziom, XP do następnego poziomu)
+ * - Siatka statystyk (gry, wygrane, punkty, streak, accuracy)
+ * - Codzienne misje (postęp, nagrody, claim)
+ * - Top 3 graczy (ranking Flash Points)
+ * - Skróty do gier i funkcji
+ * 
+ * **Dla gości:**
+ * - Wersja demo z komunikatami zachęcającymi do rejestracji
+ * - Podstawowe statystyki i ranking (widok tylko do odczytu)
+ * 
+ * Funkcjonalność:
+ * - Automatyczna synchronizacja misji z statystykami
+ * - Odbieranie nagród za misje (claim rewards)
+ * - Real-time aktualizacja postępu misji
+ * - Nawigacja do gier i innych sekcji
+ * 
+ * @page
+ */
+
 import '../styles/ui.css'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'

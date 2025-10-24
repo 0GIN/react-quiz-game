@@ -1,3 +1,18 @@
+/**
+ * @fileoverview Komponent paska postępu
+ * 
+ * Uniwersalny pasek postępu używany w:
+ * - Misjach dziennych (postęp do ukończenia)
+ * - Osiągnięciach (postęp do kolejnego milestone'a)
+ * - Innych elementach wymagających wizualizacji postępu
+ * 
+ * Props:
+ * - value: Aktualna wartość postępu
+ * - max: Maksymalna wartość (domyślnie 1)
+ * 
+ * @component
+ */
+
 type Props = { value: number; max?: number }
 
 export default function ProgressBar({value, max = 1}: Props) {

@@ -1,3 +1,26 @@
+/**
+ * @fileoverview Boczne menu nawigacyjne aplikacji
+ * 
+ * Dynamiczne menu dostosowujące się do roli użytkownika:
+ * 
+ * **Guest (niezalogowany):**
+ * - Start, Ranking (demo), Regulamin
+ * - Promocja logowania/rejestracji
+ * 
+ * **User (zalogowany użytkownik):**
+ * - Wszystkie tryby gier (Blitz, Duel, Squad, Master)
+ * - Misje dzienne, Historia gier, Ranking
+ * - Sklep, Znajomi, Czat
+ * - Ustawienia, Regulamin
+ * 
+ * **Admin:**
+ * - Wszystko co user + Panel Admina
+ * 
+ * Podświetla aktywny element menu.
+ * 
+ * @component
+ */
+
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 

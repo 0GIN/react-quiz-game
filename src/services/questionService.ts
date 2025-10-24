@@ -1,3 +1,16 @@
+/**
+ * @fileoverview Serwis zarządzający pytaniami quizowymi
+ * 
+ * Ten serwis odpowiada za:
+ * - Pobieranie losowych pytań z bazy danych z filtrowaniem po kategorii i trudności
+ * - Mieszanie kolejności odpowiedzi dla każdego pytania
+ * - Weryfikację poprawności odpowiedzi użytkownika
+ * - Zarządzanie kategoriami pytań
+ * - Statystyki dotyczące liczby pytań w poszczególnych kategoriach
+ * 
+ * @module services/questionService
+ */
+
 import { supabase } from '../lib/supabase';
 
 export interface Question {

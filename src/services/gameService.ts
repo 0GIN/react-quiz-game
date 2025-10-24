@@ -1,3 +1,17 @@
+/**
+ * @fileoverview Serwis zarządzający logiką gier i zapisywaniem wyników
+ * 
+ * Ten serwis odpowiada za:
+ * - Obliczanie Flash Points i Experience Points na podstawie wyników gry
+ * - Zapisywanie wyników gier do bazy danych
+ * - Aktualizację statystyk użytkownika (poziom, XP, streak, win/loss ratio)
+ * - Integrację z systemem misji dziennych
+ * - Integrację z systemem osiągnięć
+ * - Zarządzanie poziomami i wymaganym XP do awansu
+ * 
+ * @module services/gameService
+ */
+
 import { supabase } from '../lib/supabase';
 import { MissionTracker } from './missionService';
 

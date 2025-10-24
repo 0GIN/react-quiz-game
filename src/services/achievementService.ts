@@ -1,4 +1,31 @@
 /**
+ * @fileoverview Serwis zarządzający systemem osiągnięć użytkowników
+ * 
+ * Ten serwis odpowiada za:
+ * - Definicję kategorii osiągnięć z wielopoziomowymi milestone'ami (bronze, silver, gold, platinum, diamond)
+ * - Automatyczne sprawdzanie i odblokowywanie nowych osiągnięć na podstawie statystyk
+ * - Przyznawanie nagród za osiągnięcia (Flash Points, Experience Points)
+ * - Synchronizację postępu osiągnięć z aktualnymi statystykami użytkownika
+ * - Śledzenie progresji w różnych kategoriach (gry, wygrane, punkty, poziomy, streak, etc.)
+ * 
+ * Kategorie osiągnięć:
+ * - Mistrz Gry (liczba rozegranych gier)
+ * - Legenda Wygranych (liczba wygranych)
+ * - Kolekcjoner Flash Points (zgromadzone punkty)
+ * - Ekspert Wiedzy (poprawne odpowiedzi)
+ * - Mistrz Streaka (najdłuższy streak)
+ * - Wspinacz Poziomów (osiągnięty poziom)
+ * - Encyklopedia (wszystkie odpowiedzi)
+ * - Snajper (win rate 80%+)
+ * - Błyskawica (aktywny streak)
+ * - Perfekcjonista (100% accuracy)
+ * 
+ * @module services/achievementService
+ */
+
+import { supabase } from '../lib/supabase';
+
+/**
  * Synchronizuje milestone'y osiągnięć z aktualnymi statystykami użytkownika
  */
 export async function synchronizeAchievementsProgress(userId: string): Promise<void> {
@@ -30,7 +57,6 @@ export async function synchronizeAchievementsProgress(userId: string): Promise<v
     }
   }
 }
-import { supabase } from '../lib/supabase';
 
 /**
  * Kategorie osiągnięć z milestones

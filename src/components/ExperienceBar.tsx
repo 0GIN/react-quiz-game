@@ -1,3 +1,16 @@
+/**
+ * @fileoverview Pasek doświadczenia użytkownika
+ * 
+ * Wyświetla:
+ * - Aktualny poziom użytkownika
+ * - Postęp XP do następnego poziomu (liczby i procenty)
+ * - Animowany pasek wypełnienia z efektem świecenia
+ * 
+ * Używany na stronie głównej i w profilu użytkownika.
+ * 
+ * @component
+ */
+
 interface ExperienceBarProps {
   level: number
   currentXP: number

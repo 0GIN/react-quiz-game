@@ -1,4 +1,34 @@
 /**
+ * @fileoverview Serwis zarządzający systemem dziennych misji
+ * 
+ * Ten serwis odpowiada za:
+ * - Generowanie losowych dziennych misji dla wszystkich użytkowników
+ * - Inicjalizację misji dla użytkownika przy pierwszym logowaniu w danym dniu
+ * - Śledzenie postępu użytkownika w misjach w czasie rzeczywistym
+ * - Automatyczne oznaczanie misji jako ukończonych po osiągnięciu celu
+ * - Przyznawanie nagród za ukończone misje (Flash Points, Experience Points)
+ * - Synchronizację postępu misji z aktualnymi statystykami użytkownika
+ * - System odbierania nagród (claim rewards)
+ * 
+ * Typy misji:
+ * - play_games: Zagraj X gier
+ * - win_games: Wygraj X gier
+ * - perfect_game: Ukończ grę bezbłędnie
+ * - earn_flash_points: Zdobądź X Flash Points
+ * - answer_category: Odpowiedz na X pytań z kategorii
+ * 
+ * Użycie:
+ * - Po zakończeniu gry: MissionTracker.onGamePlayed(userId)
+ * - Po wygranej: MissionTracker.onGameWon(userId)
+ * - Po perfekcyjnej grze: MissionTracker.onPerfectGame(userId)
+ * - Po zdobyciu punktów: MissionTracker.onFlashPointsEarned(userId, amount)
+ * 
+ * @module services/missionService
+ */
+
+import { supabase } from '../lib/supabase';
+
+/**
  * Synchronizuje current_progress misji z rzeczywistymi statystykami użytkownika
  */
 export async function synchronizeMissionProgress(userId: string, userStats: {
@@ -54,6 +84,7 @@ export async function synchronizeMissionProgress(userId: string, userStats: {
     }
   }
 }
+
 /**
  * Sprawdza i nadrabia zaległe misje (ustawia is_completed jeśli progres >= target)
  */
@@ -87,7 +118,6 @@ export async function catchUpDailyMissions(userId: string): Promise<void> {
     }
   }
 }
-import { supabase } from '../lib/supabase';
 
 /**
  * Typy misji dostępne w systemie

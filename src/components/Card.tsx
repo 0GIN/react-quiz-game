@@ -1,3 +1,17 @@
+/**
+ * @fileoverview Uniwersalny komponent karty
+ * 
+ * Podstawowy komponent UI do wyświetlania zawartości w stylizowanej karcie.
+ * Używany w wielu miejscach aplikacji (statystyki, misje, ranking, etc.).
+ * 
+ * Props:
+ * - title: Opcjonalny tytuł karty
+ * - children: Zawartość karty
+ * - className: Dodatkowe klasy CSS
+ * 
+ * @component
+ */
+
 type Props = {
   title?: string
   children?: React.ReactNode

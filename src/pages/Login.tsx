@@ -1,3 +1,24 @@
+/**
+ * @fileoverview Strona logowania
+ * 
+ * Formularz logowania użytkownika z integracją Supabase Auth.
+ * 
+ * Funkcjonalność:
+ * - Walidacja pól (email, hasło)
+ * - Integracja z AuthContext.login()
+ * - Wyświetlanie błędów logowania
+ * - Auto-przekierowanie po zalogowaniu (przez GuestRoute)
+ * - Link do strony rejestracji
+ * - Stan ładowania podczas procesu logowania
+ * 
+ * Zabezpieczenia:
+ * - Dostępna tylko dla niezalogowanych (GuestRoute)
+ * - Walidacja przed wysłaniem
+ * - Obsługa błędów z API
+ * 
+ * @page
+ */
+
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';

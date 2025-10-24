@@ -1,3 +1,27 @@
+/**
+ * @fileoverview Kontekst autentykacji użytkowników
+ * 
+ * Ten kontekst odpowiada za:
+ * - Zarządzanie stanem uwierzytelnienia użytkownika (logged in/guest)
+ * - Przechowywanie danych użytkownika z tabeli users (profil, statystyki, poziom, punkty)
+ * - Funkcje logowania, rejestracji i wylogowania
+ * - Automatyczne odświeżanie sesji i danych użytkownika
+ * - Sprawdzanie ról użytkownika (guest, user, admin)
+ * - Integrację z Supabase Auth
+ * 
+ * Użycie:
+ * ```tsx
+ * const { user, isGuest, isAdmin, login, logout } = useAuth();
+ * ```
+ * 
+ * Role:
+ * - isGuest: Niezalogowany użytkownik (tylko demo)
+ * - isUser: Zalogowany zwykły użytkownik
+ * - isAdmin: Zalogowany administrator (pełne uprawnienia)
+ * 
+ * @module contexts/AuthContext
+ */
+
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
