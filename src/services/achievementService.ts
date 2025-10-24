@@ -224,47 +224,64 @@ export const ACHIEVEMENT_CATEGORIES: AchievementCategory[] = [
 
 /**
  * Sprawdza i odblokowuje nowe osiągnięcia dla użytkownika
+ * OPTYMALIZACJA: Dodano timeout 3s, aby nie blokować UI
  */
 export async function checkAndUnlockAchievements(userId: string): Promise<void> {
-  try {
-    // Pobierz dane użytkownika
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .single();
+  const TIMEOUT_MS = 3000;
+  
+  const timeoutPromise = new Promise<void>((resolve) => {
+    setTimeout(() => {
+      console.log('⏱️ Timeout osiągnięć - kontynuuję w tle');
+      resolve();
+    }, TIMEOUT_MS);
+  });
 
-    if (userError || !user) {
-      console.error('Błąd pobierania użytkownika:', userError);
-      return;
-    }
+  const checkPromise = (async () => {
+    try {
+      // Pobierz dane użytkownika
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-    // Pobierz już odblokowane osiągnięcia
-    const { data: unlockedAchievements } = await supabase
-      .from('user_achievements')
-      .select('achievement_id, milestone_level')
-      .eq('user_id', userId);
+      if (userError || !user) {
+        console.error('Błąd pobierania użytkownika:', userError);
+        return;
+      }
 
-    const unlocked = new Set(
-      (unlockedAchievements || []).map(a => `${a.achievement_id}_${a.milestone_level}`)
-    );
+      // Pobierz już odblokowane osiągnięcia
+      const { data: unlockedAchievements } = await supabase
+        .from('user_achievements')
+        .select('achievement_id, milestone_level')
+        .eq('user_id', userId);
 
-    // Sprawdź każdą kategorię
-    for (const category of ACHIEVEMENT_CATEGORIES) {
-      const currentProgress = category.getCurrentProgress(user);
+      const unlocked = new Set(
+        (unlockedAchievements || []).map(a => `${a.achievement_id}_${a.milestone_level}`)
+      );
 
-      for (const milestone of category.milestones) {
-        const achievementKey = `${category.id}_${milestone.level}`;
+      // Sprawdź tylko pierwsze 3 kategorie na raz (optymalizacja)
+      const categoriesToCheck = ACHIEVEMENT_CATEGORIES.slice(0, 3);
+      
+      for (const category of categoriesToCheck) {
+        const currentProgress = category.getCurrentProgress(user);
 
-        // Jeśli nie odblokowane i osiągnięto cel
-        if (!unlocked.has(achievementKey) && currentProgress >= milestone.target) {
-          await unlockAchievement(userId, category, milestone);
+        for (const milestone of category.milestones) {
+          const achievementKey = `${category.id}_${milestone.level}`;
+
+          // Jeśli nie odblokowane i osiągnięto cel
+          if (!unlocked.has(achievementKey) && currentProgress >= milestone.target) {
+            await unlockAchievement(userId, category, milestone);
+          }
         }
       }
+    } catch (error) {
+      console.error('Błąd sprawdzania osiągnięć:', error);
     }
-  } catch (error) {
-    console.error('Błąd sprawdzania osiągnięć:', error);
-  }
+  })();
+
+  // Czekaj max 3 sekundy
+  await Promise.race([checkPromise, timeoutPromise]);
 }
 
 /**

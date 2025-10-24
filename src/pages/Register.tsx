@@ -31,12 +31,15 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Card } from '../components';
 
+const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
+
 export default function Register() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -44,17 +47,27 @@ export default function Register() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+    setInfo('');
     setLoading(true);
 
+    const trimmedUsername = username.trim();
+    const trimmedEmail = email.trim();
+
     // Walidacja
-    if (!username || !email || !password || !confirmPassword) {
+    if (!trimmedUsername || !trimmedEmail || !password || !confirmPassword) {
       setError('Wypełnij wszystkie pola');
       setLoading(false);
       return;
     }
 
-    if (username.length < 3) {
+    if (trimmedUsername.length < 3) {
       setError('Nazwa użytkownika musi mieć minimum 3 znaki');
+      setLoading(false);
+      return;
+    }
+
+    if (!USERNAME_REGEX.test(trimmedUsername)) {
+      setError('Dozwolone są tylko litery, cyfry oraz podkreślenia (3-20 znaków)');
       setLoading(false);
       return;
     }
@@ -71,15 +84,29 @@ export default function Register() {
       return;
     }
 
-    const result = await register(username, email, password);
+    const result = await register(trimmedUsername, trimmedEmail, password);
 
     if (result.success) {
-      navigate('/'); // Przekieruj na stronę główną
+      setLoading(false);
+      if (result.requiresVerification) {
+        setInfo(
+          '✅ Konto utworzone pomyślnie!\n\n' +
+          '📧 Sprawdź swoją skrzynkę pocztową (' + trimmedEmail + ') i kliknij link potwierdzający.\n\n' +
+          'Po potwierdzeniu będziesz mógł się zalogować.\n\n' +
+          '⚠️ Dla developmentu możesz wyłączyć weryfikację w Supabase Dashboard → Authentication → Confirm email (OFF)'
+        );
+        // Nie przekierowuj - niech user zobaczy komunikat
+      } else {
+        if (result.message) {
+          setInfo(result.message);
+        }
+        // Przekieruj na stronę główną po pomyślnej rejestracji bez weryfikacji
+        setTimeout(() => navigate('/', { replace: true }), 1500);
+      }
     } else {
       setError(result.error || 'Błąd podczas rejestracji');
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
@@ -242,6 +269,21 @@ export default function Register() {
                   ❌ {error}
                 </div>
               )}
+              {info && (
+                <div style={{
+                  padding: '16px',
+                  background: 'rgba(52, 199, 89, 0.12)',
+                  border: '1px solid rgba(52, 199, 89, 0.4)',
+                  borderRadius: '8px',
+                  color: '#34C759',
+                  fontSize: '13px',
+                  marginBottom: '20px',
+                  lineHeight: '1.6',
+                  whiteSpace: 'pre-line'
+                }}>
+                  {info}
+                </div>
+              )}
 
               <button
                 type="submit"
@@ -296,8 +338,10 @@ export default function Register() {
               </p>
               <ul style={{ color: '#B8B8D0', fontSize: '12px', lineHeight: 1.8, paddingLeft: '20px', margin: 0 }}>
                 <li>Nazwa użytkownika: minimum 3 znaki</li>
+                <li>Dozwolone są litery, cyfry i podkreślenia (bez spacji)</li>
                 <li>Hasło: minimum 6 znaków</li>
                 <li>Zaczynasz z 0 FlashPoints na poziomie 1</li>
+                <li>Jeśli wymagane, potwierdź email zanim się zalogujesz</li>
               </ul>
             </div>
           </Card>

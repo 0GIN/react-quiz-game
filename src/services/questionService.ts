@@ -12,6 +12,7 @@
  */
 
 import { supabase } from '../lib/supabase';
+import { FALLBACK_QUESTIONS } from '../data/fallbackQuestions';
 
 export interface Question {
   id: string;
@@ -39,6 +40,37 @@ export interface QuestionWithAnswers extends Question {
  * @param difficulty - opcjonalny poziom trudności
  * @returns tablica pytań z pomieszanymi odpowiedziami
  */
+const FETCH_TIMEOUT_MS = 7000;
+
+function shuffleArray<T>(array: T[]): T[] {
+  return [...array].sort(() => 0.5 - Math.random());
+}
+
+function mapQuestionWithAnswers(question: Question): QuestionWithAnswers {
+  const answers = shuffleArray([
+    { text: question.correct_answer, isCorrect: true },
+    { text: question.wrong_answer_1, isCorrect: false },
+    { text: question.wrong_answer_2, isCorrect: false },
+    { text: question.wrong_answer_3, isCorrect: false },
+  ]);
+
+  return {
+    ...question,
+    answers,
+  };
+}
+
+function getFallbackQuestions(count: number, reason: string): QuestionWithAnswers[] {
+  console.warn(`⚠️ Using fallback questions (${reason}). Sprawdź dostęp do tabeli questions w Supabase.`);
+
+  return shuffleArray(FALLBACK_QUESTIONS)
+    .slice(0, Math.min(count, FALLBACK_QUESTIONS.length))
+    .map((question) => ({
+      ...question,
+      answers: shuffleArray(question.answers),
+    }));
+}
+
 export async function getRandomQuestions(
   count: number = 10,
   categoryId?: number,
@@ -64,47 +96,46 @@ export async function getRandomQuestions(
     }
 
     console.log('📡 Executing Supabase query...');
-    const { data, error } = await query;
+
+    const supabasePromise = query;
+
+    const { data, error } = await Promise.race([
+      supabasePromise,
+      new Promise<{ data: Question[] | null; error: Error | null }>((resolve) => {
+        setTimeout(() => {
+          resolve({ data: null, error: new Error('timeout fetching questions') });
+        }, FETCH_TIMEOUT_MS);
+      }),
+    ]);
 
     if (error) {
       console.error('❌ Supabase error:', error);
-      throw error;
+      return getFallbackQuestions(count, error.message || 'Supabase error');
     }
 
     console.log(`📦 Received ${data?.length || 0} questions from database`);
 
     if (!data || data.length === 0) {
-      throw new Error('No questions found with the specified criteria');
+      return getFallbackQuestions(count, 'Brak zatwierdzonych pytań w bazie');
     }
 
     // Losowo wybierz pytania
-    const shuffled = data.sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(0, Math.min(count, shuffled.length));
+    const selected = shuffleArray(data).slice(0, Math.min(count, data.length));
 
     console.log(`🎲 Selected ${selected.length} random questions`);
 
-    // Przetworz pytania - pomieszaj odpowiedzi
-    const questionsWithAnswers: QuestionWithAnswers[] = selected.map((q) => {
-      const answers = [
-        { text: q.correct_answer, isCorrect: true },
-        { text: q.wrong_answer_1, isCorrect: false },
-        { text: q.wrong_answer_2, isCorrect: false },
-        { text: q.wrong_answer_3, isCorrect: false },
-      ];
+    const questionsWithAnswers = selected.map(mapQuestionWithAnswers);
 
-      // Pomieszaj odpowiedzi
-      const shuffledAnswers = answers.sort(() => 0.5 - Math.random());
-
-      return {
-        ...q,
-        answers: shuffledAnswers,
-      };
-    });
+    if (questionsWithAnswers.length < count) {
+      const needed = count - questionsWithAnswers.length;
+      const supplemental = getFallbackQuestions(needed, 'uzupełnienie puli pytań');
+      return shuffleArray([...questionsWithAnswers, ...supplemental]);
+    }
 
     return questionsWithAnswers;
   } catch (error) {
     console.error('Error in getRandomQuestions:', error);
-    throw error;
+    return getFallbackQuestions(count, error instanceof Error ? error.message : 'Nieznany błąd');
   }
 }
 

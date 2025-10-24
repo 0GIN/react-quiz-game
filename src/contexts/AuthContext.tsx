@@ -1,3 +1,5 @@
+/* eslint-disable react-refresh/only-export-components */
+
 /**
  * @fileoverview Kontekst autentykacji użytkowników
  * 
@@ -54,17 +56,178 @@ interface AuthContextType {
   isUser: boolean;
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (username: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (
+    username: string,
+    email: string,
+    password: string
+  ) => Promise<{ success: boolean; error?: string; requiresVerification?: boolean; message?: string }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const normalizeUsername = (raw: string) => raw.trim();
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const checkUsernameAvailability = async (username: string): Promise<
+    | { ok: false; error: string }
+    | { ok: true; username: string }
+  > => {
+    const sanitized = normalizeUsername(username);
+    if (!USERNAME_REGEX.test(sanitized)) {
+      return {
+        ok: false,
+        error: 'Nazwa użytkownika może zawierać tylko litery, cyfry oraz „_” (3-20 znaków).'
+      };
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .select('id')
+      .eq('username', sanitized)
+      .maybeSingle();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('❌ Błąd sprawdzania nazwy użytkownika:', error);
+      return {
+        ok: false,
+        error: 'Nie udało się sprawdzić dostępności nazwy użytkownika.'
+      };
+    }
+
+    if (data?.id) {
+      return { ok: false, error: 'Ta nazwa użytkownika jest już zajęta.' };
+    }
+
+    return { ok: true, username: sanitized };
+  };
+
+  const checkEmailAvailability = async (email: string): Promise<
+    | { ok: false; error: string }
+    | { ok: true; email: string }
+  > => {
+    const trimmed = email.trim().toLowerCase();
+    if (!EMAIL_REGEX.test(trimmed)) {
+      return {
+        ok: false,
+        error: 'Podaj poprawny adres email.',
+      };
+    }
+
+    const { data: userByEmail, error } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', trimmed)
+      .maybeSingle();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('❌ Błąd sprawdzania email:', error);
+      return {
+        ok: false,
+        error: 'Nie udało się sprawdzić dostępności emaila. Spróbuj ponownie później.',
+      };
+    }
+
+    if (userByEmail?.id) {
+      return {
+        ok: false,
+        error: 'Istnieje już konto z tym adresem email. Spróbuj się zalogować lub użyj innego adresu.',
+      };
+    }
+
+    return { ok: true, email: trimmed };
+  };
+
+  const waitForUserRow = async (userId: string, attempts = 10, delayMs = 200) => {
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      const { data } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (data?.id) {
+        return true;
+      }
+
+      await sleep(delayMs);
+    }
+
+    return false;
+  };
+
+  const ensureAuxiliaryRecords = async (
+    userId: string,
+    username: string,
+    email?: string | null,
+  ) => {
+    try {
+      const profileBase = {
+        display_name: username,
+        avatar_url: 'guest_avatar.png',
+        bio: '',
+        show_stats: true,
+        show_achievements: true,
+        allow_friend_requests: true,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .upsert({
+          user_id: userId,
+          ...profileBase,
+        }, { onConflict: 'user_id' });
+
+      if (profileError?.code === '42703') {
+        await supabase
+          .from('user_profiles')
+          .upsert({
+            id: userId,
+            ...profileBase,
+          }, { onConflict: 'id' });
+      } else if (profileError) {
+        console.warn('⚠️ Nie udało się utworzyć profilu użytkownika:', profileError);
+      }
+
+      const { error: statsError } = await supabase
+        .from('user_stats')
+        .upsert({
+          user_id: userId,
+          username,
+        }, { onConflict: 'user_id' });
+
+      if (statsError?.code === '42703') {
+        await supabase
+          .from('user_stats')
+          .upsert({
+            id: userId,
+            username,
+          }, { onConflict: 'id' });
+      } else if (statsError) {
+        console.warn('⚠️ Nie udało się utworzyć statystyk użytkownika:', statsError);
+      }
+
+      if (email) {
+        await supabase
+          .from('users')
+          .update({ email })
+          .eq('id', userId);
+      }
+    } catch (error) {
+      console.warn('⚠️ ensureAuxiliaryRecords – błąd pomocniczy:', error);
+    }
+  };
 
   // Funkcja pobierająca dane użytkownika z tabeli users
   const fetchUserData = async (userId: string) => {
@@ -80,7 +243,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     }
 
+    if (!data) {
+      console.error('❌ Brak danych użytkownika w users dla userId:', userId);
+      return null;
+    }
+
     console.log('✅ Dane użytkownika z bazy:', data);
+    
+    // Tabela users ma już wszystkie potrzebne kolumny
     return data as User;
   };
 
@@ -94,36 +264,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Sprawdzenie sesji przy załadowaniu
   useEffect(() => {
-    const initializeAuth = async () => {
+    // Natychmiast ustaw loading=false żeby nie blokować UI
+    setLoading(false);
+    
+    // Sprawdź sesję w tle (asynchronicznie)
+    const checkSession = async () => {
       try {
-        console.log('🔄 Inicjalizacja AuthContext...');
-        console.log('📡 Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
-        
-        // Timeout dla getSession (max 5 sekund)
-        const sessionPromise = supabase.auth.getSession();
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout: getSession() trwa zbyt długo')), 5000)
-        );
-        
-        const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]) as any;
-        console.log('✅ Sesja pobrana:', session ? 'istnieje' : 'brak');
+        console.log('🔄 Sprawdzam sesję w tle...');
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('✅ Sesja sprawdzona:', session ? 'istnieje' : 'brak');
         
         if (session?.user) {
           setSupabaseUser(session.user);
-          console.log('👤 Pobieram dane użytkownika...');
           const userData = await fetchUserData(session.user.id);
-          console.log('✅ Dane użytkownika pobrane:', userData?.username);
-          setUser(userData);
+          if (userData) {
+            setUser(userData);
+            console.log('✅ Użytkownik załadowany z sesji');
+          }
+
+          const resolvedUsername = userData?.username
+            || (session.user.user_metadata as { username?: string } | null)?.username
+            || session.user.email?.split('@')[0]
+            || 'user';
+
+          await ensureAuxiliaryRecords(session.user.id, resolvedUsername, session.user.email);
         }
       } catch (error) {
-        console.error('❌ Błąd inicjalizacji auth:', error);
-      } finally {
-        console.log('✅ AuthContext gotowy (loading = false)');
-        setLoading(false);
+        console.error('❌ Błąd sprawdzania sesji:', error);
       }
     };
-
-    initializeAuth();
+    
+    // Uruchom w tle bez blokowania
+    checkSession();
 
     // Nasłuchiwanie zmian w sesji
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -133,6 +305,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSupabaseUser(session.user);
         const userData = await fetchUserData(session.user.id);
         setUser(userData);
+
+        const resolvedUsername = userData?.username
+          || (session.user.user_metadata as { username?: string } | null)?.username
+          || session.user.email?.split('@')[0]
+          || 'user';
+
+        await ensureAuxiliaryRecords(session.user.id, resolvedUsername, session.user.email);
       } else {
         setSupabaseUser(null);
         setUser(null);
@@ -147,21 +326,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Funkcja logowania
   const login = async (email: string, password: string) => {
     try {
+      const trimmedEmail = email.trim().toLowerCase();
+      console.log('🔑 Próba logowania:', trimmedEmail);
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: trimmedEmail,
         password,
       });
 
       if (error) {
-        return { success: false, error: error.message };
+        console.error('❌ Błąd logowania Supabase:', error);
+        const friendlyMessage = error.message === 'Invalid login credentials'
+          ? 'Nieprawidłowy email lub hasło. Jeśli dopiero założyłeś konto, upewnij się, że potwierdziłeś adres email.'
+          : error.message;
+        return { success: false, error: friendlyMessage };
       }
 
       if (data.user) {
-        const userData = await fetchUserData(data.user.id);
-        setUser(userData);
+        console.log('✅ Zalogowano do Supabase, user_id:', data.user.id);
         setSupabaseUser(data.user);
         
-        // Aktualizuj last_login
+        const userData = await fetchUserData(data.user.id);
+        console.log('📊 Pobrane dane użytkownika:', userData);
+
+        const resolvedUsername = userData?.username
+          || (data.user.user_metadata as { username?: string } | null)?.username
+          || data.user.email?.split('@')[0]
+          || 'user';
+
+  await ensureAuxiliaryRecords(data.user.id, resolvedUsername, trimmedEmail);
+        
+        if (userData) {
+          setUser(userData);
+          console.log('✅ User ustawiony w state');
+        } else {
+          console.error('⚠️ fetchUserData zwróciło null!');
+          // Ustaw minimalny user object żeby nie blokować logowania
+          setUser({
+            id: data.user.id,
+            username: resolvedUsername,
+            email: data.user.email || '',
+            avatar_url: '',
+            flash_points: 0,
+            level: 1,
+            experience: 0,
+            experience_to_next_level: 100,
+            total_games_played: 0,
+            total_wins: 0,
+            total_losses: 0,
+            total_correct_answers: 0,
+            total_questions_answered: 0,
+            current_streak: 0,
+            best_streak: 0,
+            is_admin: false,
+          });
+        }
+        
+        // Aktualizuj last_login w users
         await supabase
           .from('users')
           .update({ last_login: new Date().toISOString() })
@@ -170,6 +390,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return { success: true };
     } catch (error) {
+      console.error('❌ Nieoczekiwany błąd logowania:', error);
       return { success: false, error: 'Nieoczekiwany błąd podczas logowania' };
     }
   };
@@ -177,63 +398,89 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Funkcja rejestracji
   const register = async (username: string, email: string, password: string) => {
     try {
-      // 1. Sprawdź czy username jest zajęty
-      const { data: existingUsers, error: checkError } = await supabase
-        .from('users')
-        .select('username')
-        .eq('username', username);
-
-      if (checkError && checkError.code !== 'PGRST116') {
-        return { success: false, error: 'Błąd sprawdzania nazwy użytkownika' };
+      const availability = await checkUsernameAvailability(username);
+      if (!availability.ok) {
+        return { success: false, error: availability.error };
       }
 
-      if (existingUsers && existingUsers.length > 0) {
-        return { success: false, error: 'Ta nazwa użytkownika jest już zajęta' };
+      const sanitizedUsername = availability.username;
+      const emailCheck = await checkEmailAvailability(email);
+      if (!emailCheck.ok) {
+        return { success: false, error: emailCheck.error };
       }
 
-      // 2. Zarejestruj w Supabase Auth
+      const trimmedEmail = emailCheck.email;
+
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: trimmedEmail,
         password,
       });
 
       if (error) {
-        return { success: false, error: error.message };
+        const friendlyMessage = error.message === 'Database error saving new user'
+          ? 'Nie udało się zapisać konta w bazie. Jeśli masz już konto z tym adresem email, spróbuj się zalogować lub użyj innego adresu. W razie potrzeby usuń duplikat w tabeli users.'
+          : error.message;
+        console.error('❌ Supabase signUp error:', error);
+        return { success: false, error: friendlyMessage };
       }
 
-      if (!data.user) {
-        return { success: false, error: 'Nie udało się utworzyć konta' };
+      const authUser = data.user;
+
+      if (!authUser) {
+        return {
+          success: false,
+          error: 'Konto zostało utworzone, ale wymaga weryfikacji email. Sprawdź skrzynkę i spróbuj zalogować się po potwierdzeniu.',
+        };
       }
 
-      // 3. Utwórz rekord w tabeli users
-      const { error: insertError } = await supabase
+      const userRowAvailable = await waitForUserRow(authUser.id, 20, 250);
+
+      if (!userRowAvailable) {
+        console.error('❌ Nie udało się odnaleźć rekordu użytkownika w tabeli users');
+        return {
+          success: false,
+          error: 'Nie udało się zakończyć rejestracji. Spróbuj ponownie za chwilę.',
+        };
+      }
+
+      const timestamp = new Date().toISOString();
+
+      const { error: updateError } = await supabase
         .from('users')
-        .insert([
-          {
-            id: data.user.id,
-            username,
-            email,
-            password_hash: 'managed_by_supabase_auth',
-            avatar_url: 'guest_avatar.png',
-            flash_points: 0,
-            level: 1,
-            experience: 0,
-            experience_to_next_level: 100,
-            created_at: new Date().toISOString(),
-            last_login: new Date().toISOString(),
-          },
-        ]);
+        .update({
+          username: sanitizedUsername,
+          email: trimmedEmail,
+          created_at: timestamp,
+          last_login: timestamp,
+        })
+        .eq('id', authUser.id);
 
-      if (insertError) {
-        return { success: false, error: `Błąd podczas tworzenia profilu: ${insertError.message}` };
+      if (updateError) {
+        console.warn('⚠️ Nie udało się zaktualizować profilu użytkownika:', updateError);
       }
 
-      // 4. Pobierz dane użytkownika
-      const userData = await fetchUserData(data.user.id);
-      setUser(userData);
-      setSupabaseUser(data.user);
+      await ensureAuxiliaryRecords(authUser.id, sanitizedUsername, trimmedEmail);
 
-      return { success: true };
+      const userData = await fetchUserData(authUser.id);
+
+      if (userData) {
+        setUser(userData);
+      }
+
+      setSupabaseUser(authUser);
+
+      if (!data.session) {
+        return {
+          success: true,
+          requiresVerification: true,
+          message: 'Konto utworzono. Sprawdź pocztę i potwierdź email, a następnie zaloguj się.',
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Konto zostało utworzone i zalogowane.',
+      };
     } catch (error) {
       console.error('Błąd rejestracji:', error);
       return { success: false, error: 'Nieoczekiwany błąd podczas rejestracji' };
@@ -244,15 +491,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     console.log('🚪 Wykonuję logout w AuthContext...');
     try {
+      // Najpierw wyczyść stan lokalnie
+      setUser(null);
+      setSupabaseUser(null);
+      console.log('✅ User i SupabaseUser ustawione na null');
+      
+      // Potem wywołaj signOut
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('❌ Błąd signOut:', error);
         throw error;
       }
       console.log('✅ Supabase signOut zakończony');
-      setUser(null);
-      setSupabaseUser(null);
-      console.log('✅ User i SupabaseUser ustawione na null');
     } catch (error) {
       console.error('❌ Błąd w logout():', error);
       throw error;

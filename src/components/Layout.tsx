@@ -14,17 +14,20 @@
 
 import type { ReactNode } from 'react'
 import { Navbar, Sidebar } from '../components'
+import { useAuth } from '../contexts/AuthContext'
 
 interface LayoutProps {
   children: ReactNode
 }
 
 export default function Layout({ children }: LayoutProps) {
+  const { isGuest } = useAuth();
+
   return (
     <div className="home-root">
       <Navbar />
-      <div className="app-frame">
-        <Sidebar />
+      <div className={`app-frame${isGuest ? ' no-sidebar' : ''}`}>
+        {!isGuest && <Sidebar />}
         {children}
       </div>
     </div>

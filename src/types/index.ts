@@ -71,6 +71,7 @@ export interface GameResult {
   bestStreak: number;
   livesRemaining?: number;
   categoryId?: number;
+  usedFallbackQuestions?: boolean;
   questions: Array<{
     questionId: string;
     answer: string;

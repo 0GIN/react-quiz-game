@@ -5,7 +5,6 @@
  * - Obliczanie Flash Points i Experience Points na podstawie wyników gry
  * - Zapisywanie wyników gier do bazy danych
  * - Aktualizację statystyk użytkownika (poziom, XP, streak, win/loss ratio)
- * - Integrację z systemem misji dziennych
  * - Integrację z systemem osiągnięć
  * - Zarządzanie poziomami i wymaganym XP do awansu
  * 
@@ -13,7 +12,6 @@
  */
 
 import { supabase } from '../lib/supabase';
-import { MissionTracker } from './missionService';
 
 export interface GameResult {
   gameMode: 'blitz' | 'duel' | 'squad' | 'master';
@@ -24,6 +22,7 @@ export interface GameResult {
   bestStreak: number;
   livesRemaining?: number;
   categoryId?: number;
+  usedFallbackQuestions?: boolean;
   questions: Array<{
     questionId: string;
     answer: string;
@@ -200,35 +199,50 @@ export async function saveGameResult(
     }
 
     // 7. Zapisz pytania i odpowiedzi
-    const gameQuestions = result.questions.map((q, index) => ({
-      game_id: gameId,
-      question_id: q.questionId,
-      question_order: index + 1,
-    }));
+    const isValidUUID = (value: string | null | undefined) =>
+      typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
-    const { error: questionsError } = await supabase
-      .from('game_questions')
-      .insert(gameQuestions);
+    const persistedQuestions = result.questions
+      .map((q, index) => ({
+        game_id: gameId,
+        question_id: isValidUUID(q.questionId) ? q.questionId : null,
+        question_order: index + 1,
+      }))
+      .filter((entry) => entry.question_id !== null);
 
-    if (questionsError) {
-      console.error('❌ Błąd zapisywania pytań:', questionsError);
+    if (persistedQuestions.length > 0) {
+      const { error: questionsError } = await supabase
+        .from('game_questions')
+        .insert(persistedQuestions);
+
+      if (questionsError) {
+        console.error('❌ Błąd zapisywania pytań:', questionsError);
+      }
+    } else if (result.usedFallbackQuestions) {
+      console.log('ℹ️ Pomijam zapisywanie pytań – gra korzystała z fallbackowych danych.');
     }
 
-    const gameAnswers = result.questions.map((q) => ({
-      game_id: gameId,
-      user_id: userId,
-      question_id: q.questionId,
-      answer_given: q.answer,
-      is_correct: q.isCorrect,
-      time_taken_seconds: q.timeTaken || null,
-    }));
+    const persistedAnswers = result.questions
+      .map((q) => ({
+        game_id: gameId,
+        user_id: userId,
+        question_id: isValidUUID(q.questionId) ? q.questionId : null,
+        answer_given: q.answer,
+        is_correct: q.isCorrect,
+        time_taken_seconds: q.timeTaken || null,
+      }))
+      .filter((answer) => answer.question_id !== null);
 
-    const { error: answersError } = await supabase
-      .from('game_answers')
-      .insert(gameAnswers);
+    if (persistedAnswers.length > 0) {
+      const { error: answersError } = await supabase
+        .from('game_answers')
+        .insert(persistedAnswers);
 
-    if (answersError) {
-      console.error('❌ Błąd zapisywania odpowiedzi:', answersError);
+      if (answersError) {
+        console.error('❌ Błąd zapisywania odpowiedzi:', answersError);
+      }
+    } else if (result.usedFallbackQuestions) {
+      console.log('ℹ️ Pomijam zapisywanie odpowiedzi – gra korzystała z fallbackowych danych.');
     }
 
     // 8. Oblicz nowy streak (tylko dla trybów PvP, nie dla Blitz!)
@@ -266,36 +280,22 @@ export async function saveGameResult(
     }
 
     console.log('✅ Gra zapisana pomyślnie!');
+    console.table({
+      'Flash Points dodane': flashPointsEarned,
+      'Doświadczenie dodane': experienceEarned,
+      'Poziom przed': userData.level,
+      'Poziom po': newLevel,
+      'Awans': leveledUp ? '⬆️ TAK' : 'nie',
+      'Wygrana': isWin ? '✅ TAK' : 'nie',
+      'Perfekcyjna gra': (result.correctAnswers === result.questionsAnswered && result.questionsAnswered > 0) ? '🎯 TAK' : 'nie'
+    });
 
-    // 10. Aktualizuj postęp misji
-    try {
-      await MissionTracker.onGamePlayed(userId);
-      
-      if (isWin) {
-        await MissionTracker.onGameWon(userId);
-      }
-      
-      // Sprawdź czy gra była perfekcyjna (100% poprawnych)
-      if (result.correctAnswers === result.questionsAnswered && result.questionsAnswered > 0) {
-        await MissionTracker.onPerfectGame(userId);
-      }
-      
-      // Śledzenie zdobytych Flash Points
-      await MissionTracker.onFlashPointsEarned(userId, flashPointsEarned);
-      
-      console.log('✅ Postęp misji zaktualizowany');
-    } catch (missionError) {
-      console.error('⚠️ Błąd aktualizacji misji (nie krytyczny):', missionError);
-    }
-
-    // 11. Sprawdź i odblokuj nowe osiągnięcia
-    try {
-      const { checkAndUnlockAchievements } = await import('./achievementService');
-      await checkAndUnlockAchievements(userId);
-      console.log('✅ Osiągnięcia sprawdzone');
-    } catch (achievementError) {
-      console.error('⚠️ Błąd sprawdzania osiągnięć (nie krytyczny):', achievementError);
-    }
+    // 10. Sprawdź i odblokuj nowe osiągnięcia (ASYNC - nie blokuj)
+    // Uruchom w tle, nie czekaj na wynik
+    import('./achievementService')
+      .then(({ checkAndUnlockAchievements }) => checkAndUnlockAchievements(userId))
+      .then(() => console.log('✅ Osiągnięcia sprawdzone'))
+      .catch((err) => console.error('⚠️ Błąd osiągnięć (nie krytyczny):', err));
 
     return {
       success: true,

@@ -14,7 +14,7 @@
  * @component
  */
 
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import textLogo from '../assets/text_logo.png'
 import guestAvatar from '../assets/guest_avatar.png'
@@ -22,14 +22,14 @@ import flashPoint from '../assets/flash_point.png'
 
 export default function Navbar() {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
 
   const handleLogout = async () => {
     console.log('🚪 Kliknięto przycisk wylogowania');
     try {
       await logout();
       console.log('✅ Wylogowanie zakończone');
-      navigate('/login');
+      // Wymuszenie pełnego przeładowania strony
+      window.location.href = '/login';
     } catch (error) {
       console.error('❌ Błąd wylogowania:', error);
     }
@@ -69,14 +69,13 @@ export default function Navbar() {
                 justifyContent: 'center',
                 width: '40px',
                 height: '40px',
-                fontSize: '20px'
+                fontSize: '20px',
+                cursor: 'pointer'
               }}
               aria-label="Wyloguj się"
               title="Wyloguj się"
             >
-              <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>
-                logout
-              </span>
+              🚪
             </button>
           </>
         ) : (

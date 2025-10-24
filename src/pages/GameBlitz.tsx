@@ -32,16 +32,16 @@
  * @page
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getRandomQuestions } from '../services/questionService';
 import type { QuestionWithAnswers } from '../services/questionService';
 import { useAuth } from '../contexts/AuthContext';
 import { saveGameResult } from '../services/gameService';
-import type { GameResult } from '../services/gameService';
+import type { GameResult, GameStats as PersistedGameStats } from '../services/gameService';
 import '../styles/GameBlitz.css';
 
-interface GameStats {
+interface BlitzStats {
   questionsAnswered: number;
   correctAnswers: number;
   wrongAnswers: number;
@@ -70,8 +70,9 @@ export default function GameBlitz() {
   const [error, setError] = useState<string | null>(null);
   const [answeredQuestions, setAnsweredQuestions] = useState<AnsweredQuestion[]>([]);
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
+  const [usingFallbackQuestions, setUsingFallbackQuestions] = useState(false);
   
-  const [stats, setStats] = useState<GameStats>({
+  const [stats, setStats] = useState<BlitzStats>({
     questionsAnswered: 0,
     correctAnswers: 0,
     wrongAnswers: 0,
@@ -80,6 +81,8 @@ export default function GameBlitz() {
     score: 0,
     livesRemaining: 3,
   });
+
+  const hasEndedRef = useRef(false);
 
   // Załaduj pytania przy starcie
   useEffect(() => {
@@ -105,6 +108,8 @@ export default function GameBlitz() {
       
       console.log('📝 First question:', fetchedQuestions[0]);
       setQuestions(fetchedQuestions);
+      const fallbackDetected = fetchedQuestions.some(q => q.id.startsWith('fallback-'));
+      setUsingFallbackQuestions(fallbackDetected);
       console.log('✅ Questions loaded successfully');
     } catch (err) {
       console.error('❌ Error loading questions:', err);
@@ -178,6 +183,9 @@ export default function GameBlitz() {
   };
 
   const handleNextQuestion = () => {
+    if (hasEndedRef.current) {
+      return;
+    }
     // Sprawdź czy gra się skończyła (po aktualizacji statystyk)
     if (stats.livesRemaining === 0) {
       endGame();
@@ -200,6 +208,10 @@ export default function GameBlitz() {
   };
 
   const endGame = async () => {
+    if (hasEndedRef.current) {
+      return;
+    }
+    hasEndedRef.current = true;
     console.log('🏁 Kończy się gra...');
     
     // Jeśli użytkownik zalogowany - zapisz wynik
@@ -215,9 +227,19 @@ export default function GameBlitz() {
         bestStreak: stats.bestStreak,
         livesRemaining: stats.livesRemaining,
         questions: answeredQuestions,
+        usedFallbackQuestions: usingFallbackQuestions,
       };
 
-      const result = await saveGameResult(user.id, gameResult);
+      const SAVE_TIMEOUT_MS = 8000;
+
+      const timeoutPromise = new Promise<{ success: boolean; stats?: PersistedGameStats; error?: string }>((resolve) => {
+        setTimeout(() => resolve({ success: false, error: 'Przekroczono czas zapisu wyników (Supabase).' }), SAVE_TIMEOUT_MS);
+      });
+
+      const result = await Promise.race([
+        saveGameResult(user.id, gameResult),
+        timeoutPromise,
+      ]);
       
       if (result.success) {
         console.log('✅ Wynik zapisany!', result.stats);
@@ -226,6 +248,10 @@ export default function GameBlitz() {
         await refreshUser();
         console.log('🔄 Dane użytkownika odświeżone');
         
+        const fallbackMessage = usingFallbackQuestions
+          ? 'Gra korzystała z trybu offline – zapisano tylko podsumowanie bez szczegółów odpowiedzi.'
+          : undefined;
+
         // Przejdź do ekranu wyników z dodatkowymi danymi
         navigate('/game-result', {
           state: {
@@ -237,6 +263,7 @@ export default function GameBlitz() {
               leveledUp: result.stats?.leveledUp,
               newLevel: result.stats?.newLevel,
             },
+            message: fallbackMessage,
           },
         });
       } else {
@@ -246,6 +273,7 @@ export default function GameBlitz() {
           state: {
             gameMode: 'blitz',
             stats,
+            message: result.error || 'Nie udało się zapisać wyników w bazie danych.',
           },
         });
       }

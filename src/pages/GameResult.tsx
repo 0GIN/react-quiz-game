@@ -5,7 +5,7 @@ import '../styles/GameResult.css';
 export default function GameResult() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { gameMode, stats } = location.state || {};
+  const { gameMode, stats, message } = location.state || {};
 
   useEffect(() => {
     // Jeśli brak danych, przekieruj do home
@@ -41,6 +41,11 @@ export default function GameResult() {
           <p className="result-subtitle">
             {gameMode === 'blitz' && 'Tryb Blitz'}
           </p>
+          {message && (
+            <p className="result-message">
+              {message}
+            </p>
+          )}
         </div>
 
         {/* Main Score */}

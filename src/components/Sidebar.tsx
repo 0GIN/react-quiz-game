@@ -97,11 +97,11 @@ export default function Sidebar() {
     <nav className="sidebar" aria-label="Główne menu aplikacji">
       <ul>
         <li><Link to="/" className={`nav-item ${isActive('/') ? 'active' : ''}`}><span className="nav-icon">🏠</span> Start</Link></li>
+        <li><Link to="/profile" className={`nav-item ${isActive('/profile') ? 'active' : ''}`}><span className="nav-icon">👤</span> Mój Profil</Link></li>
         <li><Link to="/ranking" className={`nav-item ${isActive('/ranking') ? 'active' : ''}`}><span className="nav-icon">🏆</span> Ranking</Link></li>
-        <li><Link to="/missions" className={`nav-item ${isActive('/missions') ? 'active' : ''}`}><span className="nav-icon">🎯</span> Misje Codziennie</Link></li>
         <li><Link to="/history" className={`nav-item ${isActive('/history') ? 'active' : ''}`}><span className="nav-icon">📋</span> Historia Gier</Link></li>
         <li className="spacer"></li>
-        <li><Link to="/shop" className={`nav-item ${isActive('/shop') ? 'active' : ''}`}><span className="nav-icon">🛒</span> Sklep Punktów</Link></li>
+        <li><Link to="/shop" className={`nav-item ${isActive('/shop') ? 'active' : ''}`}><span className="nav-icon">🛒</span> Sklep</Link></li>
         <li><Link to="/friends" className={`nav-item ${isActive('/friends') ? 'active' : ''}`}><span className="nav-icon">👥</span> Moi Znajomi</Link></li>
         <li><Link to="/find-friends" className={`nav-item ${isActive('/find-friends') ? 'active' : ''}`}><span className="nav-icon">🔍</span> Szukaj Znajomych</Link></li>
         <li><Link to="/chat" className={`nav-item ${isActive('/chat') ? 'active' : ''}`}><span className="nav-icon">💬</span> Czat</Link></li>

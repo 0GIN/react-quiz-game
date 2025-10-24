@@ -8,8 +8,12 @@
  * 
  * Używany na stronie głównej i w profilu użytkownika.
  * 
+ * OPTYMALIZACJA: React.memo + useMemo dla obliczeń
+ * 
  * @component
  */
+
+import { memo, useMemo } from 'react'
 
 interface ExperienceBarProps {
   level: number
@@ -17,10 +21,12 @@ interface ExperienceBarProps {
   xpToNextLevel: number
 }
 
-export default function ExperienceBar({ level, currentXP, xpToNextLevel }: ExperienceBarProps) {
-  // Zabezpieczenie przed dzieleniem przez zero
-  const percentage = xpToNextLevel > 0 ? (currentXP / xpToNextLevel) * 100 : 0
-  const safePercentage = Math.min(Math.max(percentage, 0), 100) // Ogranicz do 0-100%
+function ExperienceBar({ level, currentXP, xpToNextLevel }: ExperienceBarProps) {
+  // Memoizuj obliczenia - przeliczaj tylko gdy wartości się zmienią
+  const safePercentage = useMemo(() => {
+    const pct = xpToNextLevel > 0 ? (currentXP / xpToNextLevel) * 100 : 0
+    return Math.min(Math.max(pct, 0), 100)
+  }, [currentXP, xpToNextLevel])
 
   return (
     <div className="experience-bar-container">
@@ -40,3 +46,5 @@ export default function ExperienceBar({ level, currentXP, xpToNextLevel }: Exper
     </div>
   )
 }
+
+export default memo(ExperienceBar)
