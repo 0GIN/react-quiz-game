@@ -1,0 +1,224 @@
+/* Historia Gier - Styles */
+
+.history-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 15px;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: linear-gradient(135deg, #1e2530 0%, #161b22 100%);
+  border-radius: 12px;
+}
+
+.summary-stat {
+  text-align: center;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  border: 1px solid #30363d;
+}
+
+.summary-stat.success {
+  border-color: #3fb950;
+  background: rgba(63, 185, 80, 0.1);
+}
+
+.summary-stat.error {
+  border-color: #f85149;
+  background: rgba(248, 81, 73, 0.1);
+}
+
+.summary-stat .stat-value {
+  display: block;
+  font-size: 28px;
+  font-weight: bold;
+  color: #00e5ff;
+  margin-bottom: 5px;
+}
+
+.summary-stat.success .stat-value {
+  color: #3fb950;
+}
+
+.summary-stat.error .stat-value {
+  color: #f85149;
+}
+
+.summary-stat .stat-label {
+  display: block;
+  font-size: 12px;
+  color: #8b949e;
+  text-transform: uppercase;
+}
+
+.history-filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #c9d1d9;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.filter-btn:hover {
+  background: #30363d;
+  border-color: #00e5ff;
+}
+
+.filter-btn.active {
+  background: #00e5ff;
+  color: #0d1117;
+  border-color: #00e5ff;
+  font-weight: bold;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.history-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto auto auto auto;
+  align-items: center;
+  gap: 15px;
+  padding: 15px 20px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.history-item:hover {
+  background: #1c2128;
+  border-color: #00e5ff;
+  transform: translateX(5px);
+}
+
+.history-item.win {
+  border-left: 3px solid #3fb950;
+}
+
+.history-item.loss {
+  border-left: 3px solid #f85149;
+}
+
+.result-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.result-badge.win {
+  background: rgba(63, 185, 80, 0.2);
+  color: #3fb950;
+}
+
+.result-badge.loss {
+  background: rgba(248, 81, 73, 0.2);
+  color: #f85149;
+}
+
+.history-mode {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mode-icon {
+  font-size: 20px;
+}
+
+.history-category {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #8b949e;
+}
+
+.history-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.score-main {
+  font-size: 20px;
+  font-weight: bold;
+  color: #00e5ff;
+}
+
+.score-label {
+  font-size: 11px;
+  color: #8b949e;
+}
+
+.history-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: #8b949e;
+}
+
+.history-rewards {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.xp-gain {
+  color: #3fb950;
+  font-weight: bold;
+}
+
+.pts-gain {
+  color: #00e5ff;
+  font-weight: bold;
+}
+
+.xp-loss {
+  color: #f85149;
+  font-weight: bold;
+}
+
+.history-time {
+  font-size: 12px;
+  color: #8b949e;
+  white-space: nowrap;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .history-item {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  
+  .history-result,
+  .history-mode,
+  .history-score,
+  .history-stats,
+  .history-rewards {
+    justify-self: start;
+  }
+  
+  .history-time {
+    text-align: right;
+    font-style: italic;
+  }
+}

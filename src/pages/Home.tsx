@@ -1,10 +1,11 @@
 import '../styles/ui.css'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { Hero, Card, ProgressBar, ExperienceBar, AchievementBadge, StatsGrid } from '../components'
+import { Hero, Card, ProgressBar, ExperienceBar, StatsGrid } from '../components'
 import flashPoint from '../assets/flash_point.png'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { MissionTracker, catchUpDailyMissions, synchronizeMissionProgress } from '../services/missionService'
 
 interface TopPlayer {
   id: string;
@@ -14,12 +15,15 @@ interface TopPlayer {
 
 interface DailyMission {
   id: string;
-  title: string;
+  mission_id: string;
+  name: string;
   description: string;
   target_value: number;
   current_progress: number;
   reward_flash_points: number;
+  reward_experience: number;
   is_completed: boolean;
+  is_claimed: boolean;
 }
 
 export default function Home() {
@@ -53,15 +57,49 @@ export default function Home() {
     if (!isGuest && user) {
       const fetchDailyMissions = async () => {
         setLoading(true);
+
+        // Najpierw pobierz statystyki użytkownika i zsynchronizuj progres misji
+        try {
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('total_games_played, total_wins, best_streak, flash_points, total_correct_answers, total_questions_answered')
+            .eq('id', user.id)
+            .single();
+          if (!userError && userData) {
+            await synchronizeMissionProgress(user.id, userData);
+          }
+          await catchUpDailyMissions(user.id);
+        } catch (e) {
+          // Błąd nie jest krytyczny, misje i tak się załadują
+        }
+
+        // Inicjalizuj misje na dziś (jeśli jeszcze nie istnieją)
+        const { initializeDailyMissions } = await import('../services/missionService');
+        await initializeDailyMissions(user.id);
         
-        // Pobierz aktywne misje na dziś
+        // Pobierz postęp użytkownika w misjach na dziś
         const today = new Date().toISOString().split('T')[0];
-        const { data: activeMissions, error: missionsError } = await supabase
-          .from('daily_missions')
-          .select('*')
-          .eq('is_active', true)
-          .eq('valid_date', today)
-          .limit(3);
+        const { data: userMissions, error: missionsError } = await supabase
+          .from('user_daily_missions')
+          .select(`
+            id,
+            current_progress,
+            is_completed,
+            is_claimed,
+            mission_id,
+            daily_missions!inner (
+              id,
+              name,
+              description,
+              target_value,
+              flash_points_reward,
+              experience_reward,
+              valid_date
+            )
+          `)
+          .eq('user_id', user.id)
+          .eq('daily_missions.valid_date', today)
+          .eq('daily_missions.is_active', true);
 
         if (missionsError) {
           console.error('Błąd pobierania misji:', missionsError);
@@ -69,27 +107,19 @@ export default function Home() {
           return;
         }
 
-        // Sprawdź postęp użytkownika dla każdej misji
-        const missionsWithProgress = await Promise.all(
-          (activeMissions || []).map(async (mission) => {
-            const { data: userMission } = await supabase
-              .from('user_daily_missions')
-              .select('current_progress, is_completed')
-              .eq('user_id', user.id)
-              .eq('mission_id', mission.id)
-              .single();
-
-            return {
-              id: mission.id,
-              title: mission.name,
-              description: mission.description,
-              target_value: mission.target_value,
-              current_progress: userMission?.current_progress || 0,
-              reward_flash_points: mission.flash_points_reward,
-              is_completed: userMission?.is_completed || false
-            };
-          })
-        );
+        // Mapuj dane do naszego interfejsu
+        const missionsWithProgress = (userMissions || []).map((um: any) => ({
+          id: um.id,
+          mission_id: um.mission_id,
+          name: um.daily_missions.name,
+          description: um.daily_missions.description,
+          target_value: um.daily_missions.target_value,
+          reward_flash_points: um.daily_missions.flash_points_reward,
+          reward_experience: um.daily_missions.experience_reward,
+          current_progress: um.current_progress,
+          is_completed: um.is_completed,
+          is_claimed: um.is_claimed || false
+        }));
         
         setDailyMissions(missionsWithProgress);
         setLoading(false);
@@ -106,6 +136,7 @@ export default function Home() {
     xpToNextLevel: user?.experience_to_next_level || 100,
     gamesPlayed: user?.total_games_played || 0,
     totalWins: user?.total_wins || 0,
+    totalLosses: user?.total_losses || 0,
     totalQuestionsAnswered: user?.total_questions_answered || 0,
     totalCorrectAnswers: user?.total_correct_answers || 0,
     currentStreak: user?.current_streak || 0
@@ -403,14 +434,43 @@ export default function Home() {
     <main className="main" role="main">
       <Hero />
 
-          <section className="mosaic" aria-label="Panel informacyjny">
-            {/* Twoje Misje */}
-            <Card title="Twoje Misje Dnia" className="missions">
-              {loading ? (
-                <div style={{ textAlign: 'center', padding: '20px', color: '#B8B8D0' }}>
-                  Ładowanie misji...
-                </div>
-              ) : dailyMissions.length === 0 ? (
+      <section className="mosaic" aria-label="Panel informacyjny">
+        {/* Statystyki z rozszerzonymi danymi */}
+        <Card title="Twoje Statystyki" className="stats">
+          <ExperienceBar 
+            level={userData.level} 
+            currentXP={userData.currentXP} 
+            xpToNextLevel={userData.xpToNextLevel} 
+          />
+          <StatsGrid 
+            gamesPlayed={userData.gamesPlayed}
+            accuracy={accuracy}
+            streak={userData.currentStreak}
+            level={userData.level}
+          />
+          {userData.gamesPlayed === 0 && (
+            <div style={{ 
+              marginTop: '16px', 
+              padding: '12px', 
+              background: 'rgba(0,229,255,0.1)', 
+              borderRadius: '8px',
+              textAlign: 'center',
+              fontSize: '13px',
+              color: '#B8B8D0'
+            }}>
+              � Zagraj pierwszą grę, aby zobaczyć swoje statystyki!
+            </div>
+          )}
+        </Card>
+
+        {/* Twoje Misje */}
+        <div style={{ gridColumn: 'span 6' }}>
+          <Card title="🎯 Twoje Misje Dnia" className="missions">
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '20px', color: '#B8B8D0' }}>
+                Ładowanie misji...
+              </div>
+            ) : dailyMissions.length === 0 ? (
                 <div style={{ 
                   textAlign: 'center', 
                   padding: '20px', 
@@ -428,29 +488,115 @@ export default function Home() {
                 </div>
               ) : (
                 dailyMissions.map((mission) => (
-                  <div key={mission.id} className="mission-row">
-                    <div className="mission-title">
-                      {mission.title}
-                      <span style={{ 
-                        marginLeft: '8px', 
-                        fontSize: '12px', 
-                        color: '#00E5FF',
-                        fontWeight: 600
+                  <div key={mission.id} style={{
+                    padding: '16px',
+                    background: mission.is_completed 
+                      ? 'linear-gradient(90deg, rgba(0,229,255,0.1) 0%, rgba(0,229,255,0.05) 100%)'
+                      : 'rgba(18,18,30,0.4)',
+                    borderRadius: '12px',
+                    border: mission.is_completed 
+                      ? '2px solid rgba(0,229,255,0.5)'
+                      : '2px solid rgba(255,255,255,0.1)',
+                    marginBottom: '12px',
+                    transition: 'all 0.3s ease'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ 
+                          fontSize: '16px', 
+                          fontWeight: 700, 
+                          color: mission.is_completed ? '#00E5FF' : '#E0E0E0',
+                          marginBottom: '4px'
+                        }}>
+                          {mission.name}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#B8B8D0' }}>
+                          {mission.description}
+                        </div>
+                      </div>
+                      <div style={{
+                        padding: '6px 12px',
+                        background: 'rgba(255,215,0,0.2)',
+                        borderRadius: '20px',
+                        fontSize: '12px',
+                        color: '#FFD700',
+                        fontWeight: 700,
+                        whiteSpace: 'nowrap',
+                        marginLeft: '12px'
                       }}>
                         +{mission.reward_flash_points} FP
-                      </span>
+                      </div>
                     </div>
+                    
                     <ProgressBar value={mission.current_progress} max={mission.target_value} />
-                    <div className="small">
-                      {mission.current_progress}/{mission.target_value}
-                      {mission.is_completed && ' ✓'}
+                    
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center',
+                      marginTop: '8px'
+                    }}>
+                      <div style={{ fontSize: '13px', color: '#B8B8D0' }}>
+                        {mission.current_progress}/{mission.target_value}
+                        {mission.is_completed && !mission.is_claimed && (
+                          <span style={{ color: '#4ade80', marginLeft: '8px', fontWeight: 600 }}>
+                            ✓ Ukończone!
+                          </span>
+                        )}
+                        {mission.is_claimed && (
+                          <span style={{ color: '#B8B8D0', marginLeft: '8px' }}>
+                            ✓ Odebrane
+                          </span>
+                        )}
+                      </div>
+                      
+                      {mission.is_completed && !mission.is_claimed && (
+                        <button
+                          onClick={async () => {
+                            const { claimMissionReward } = await import('../services/missionService');
+                            const result = await claimMissionReward(user!.id, mission.id);
+                            
+                            if (result.success && result.reward) {
+                              alert(`🎉 Gratulacje! Otrzymujesz:\n+${result.reward.fp} Flash Points\n+${result.reward.xp} XP`);
+                              // Odśwież misje
+                              window.location.reload();
+                            } else {
+                              alert(`❌ ${result.error}`);
+                            }
+                          }}
+                          style={{
+                            padding: '8px 20px',
+                            background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)',
+                            border: 'none',
+                            borderRadius: '8px',
+                            color: '#fff',
+                            fontSize: '13px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            transition: 'transform 0.2s, box-shadow 0.2s',
+                            boxShadow: '0 4px 12px rgba(74,222,128,0.4)'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = '0 6px 16px rgba(74,222,128,0.6)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(74,222,128,0.4)';
+                          }}
+                        >
+                          🎁 Odbierz nagrodę
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))
               )}
             </Card>
+          </div>
 
-            {/* Ranking */}
+          {/* Ranking */}
+          <div style={{ gridColumn: 'span 6' }}>
             <Card title="Ranking Znajomych" className="ranking">
               <ol className="ranking-list">
                 {topPlayers.map((player, index) => (
@@ -464,88 +610,8 @@ export default function Home() {
                 ))}
               </ol>
             </Card>
-
-            {/* Aktywność */}
-            <Card title="Aktywność" className="activity">
-              <ul className="activity-list">
-                <li>Użytkownik X wyzwał Cię na pojedynek!</li>
-                <li>Użytkownik Y dołączył misję</li>
-                <li>Użytkownik Z pobił wynik!</li>
-              </ul>
-            </Card>
-
-            {/* Statystyki z rozszerzonymi danymi */}
-            <Card title="Twoje Statystyki" className="stats">
-              <ExperienceBar 
-                level={userData.level} 
-                currentXP={userData.currentXP} 
-                xpToNextLevel={userData.xpToNextLevel} 
-              />
-              <StatsGrid 
-                gamesPlayed={userData.gamesPlayed}
-                accuracy={accuracy}
-                streak={userData.currentStreak}
-                level={userData.level}
-              />
-              {userData.gamesPlayed === 0 && (
-                <div style={{ 
-                  marginTop: '16px', 
-                  padding: '12px', 
-                  background: 'rgba(0,229,255,0.1)', 
-                  borderRadius: '8px',
-                  textAlign: 'center',
-                  fontSize: '13px',
-                  color: '#B8B8D0'
-                }}>
-                  💡 Zagraj pierwszą grę, aby zobaczyć swoje statystyki!
-                </div>
-              )}
-            </Card>
-
-            {/* Osiągnięcia */}
-            <Card title="Ostatnie Osiągnięcia" className="achievements">
-              <div className="achievements-list">
-                <AchievementBadge 
-                  icon="🏅"
-                  title="Mistrz Geografii"
-                  date="Wczoraj"
-                  isNew
-                />
-                <AchievementBadge 
-                  icon="💯"
-                  title="100 Wygranych"
-                  date="3 dni temu"
-                />
-                <AchievementBadge 
-                  icon="🔥"
-                  title="Gorąca Passa x10"
-                  date="Tydzień temu"
-                />
-              </div>
-            </Card>
-
-            {/* Wyzwania */}
-            <Card title="Oczekujące Wyzwania" className="challenges">
-              <div className="challenges-list">
-                <div className="challenge-item">
-                  <div className="challenge-avatar">👤</div>
-                  <div className="challenge-info">
-                    <strong>PlayerX</strong> wyzwał Cię na pojedynek
-                    <div className="challenge-category">Geografia • 5 pytań</div>
-                  </div>
-                  <button className="btn-small primary">Akceptuj</button>
-                </div>
-                <div className="challenge-item">
-                  <div className="challenge-avatar">👤</div>
-                  <div className="challenge-info">
-                    <strong>PlayerY</strong> czeka na Twoją odpowiedź
-                    <div className="challenge-category">Historia • 10 pytań</div>
-                  </div>
-                  <button className="btn-small primary">Zagraj</button>
-                </div>
-              </div>
-            </Card>
-          </section>
-        </main>
-  )
-}
+          </div>
+        </section>
+      </main>
+    )
+  }

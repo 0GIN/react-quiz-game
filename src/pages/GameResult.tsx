@@ -84,66 +84,6 @@ export default function GameResult() {
               <span className="stat-value">{stats.bestStreak}</span>
             </div>
           </div>
-
-          <div className="stat-card">
-            <div className="stat-icon">❓</div>
-            <div className="stat-info">
-              <span className="stat-label">Pytań</span>
-              <span className="stat-value">{stats.questionsAnswered}</span>
-            </div>
-          </div>
-
-          {gameMode === 'blitz' && (
-            <div className="stat-card">
-              <div className="stat-icon">❤️</div>
-              <div className="stat-info">
-                <span className="stat-label">Pozostałe życia</span>
-                <span className="stat-value">{stats.livesRemaining}</span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Achievements */}
-        <div className="achievements">
-          <h3 className="achievements-title">🏅 Osiągnięcia</h3>
-          <div className="achievements-list">
-            {stats.bestStreak >= 5 && (
-              <div className="achievement">
-                <span className="achievement-icon">🔥</span>
-                <span className="achievement-name">Hot Streak!</span>
-                <span className="achievement-desc">5+ poprawnych z rzędu</span>
-              </div>
-            )}
-            {stats.bestStreak >= 10 && (
-              <div className="achievement">
-                <span className="achievement-icon">⚡</span>
-                <span className="achievement-name">Niesamowite!</span>
-                <span className="achievement-desc">10+ poprawnych z rzędu</span>
-              </div>
-            )}
-            {accuracy === 100 && (
-              <div className="achievement">
-                <span className="achievement-icon">💯</span>
-                <span className="achievement-name">Perfekcja!</span>
-                <span className="achievement-desc">100% celności</span>
-              </div>
-            )}
-            {stats.questionsAnswered >= 20 && (
-              <div className="achievement">
-                <span className="achievement-icon">📚</span>
-                <span className="achievement-name">Wiedza</span>
-                <span className="achievement-desc">20+ pytań</span>
-              </div>
-            )}
-            {gameMode === 'blitz' && stats.livesRemaining === 3 && (
-              <div className="achievement">
-                <span className="achievement-icon">🛡️</span>
-                <span className="achievement-name">Niezniszczalny!</span>
-                <span className="achievement-desc">Bez straconych żyć</span>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Action Buttons */}

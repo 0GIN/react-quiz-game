@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Card } from '../components';
 
@@ -9,8 +9,9 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
-  const navigate = useNavigate();
+  const { login, user } = useAuth();
+
+  console.log('🔍 Login.tsx - user:', user ? user.username : 'null');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -24,15 +25,17 @@ export default function Login() {
       return;
     }
 
+    console.log('🔐 Próba logowania...');
     const result = await login(email, password);
+    console.log('📊 Wynik logowania:', result);
 
     if (result.success) {
-      navigate('/'); // Przekieruj na stronę główną
+      console.log('✅ Logowanie udane - czekam na aktualizację user w kontekście');
+      // GuestRoute automatycznie przekieruje gdy user się ustawi
     } else {
       setError(result.error || 'Nieprawidłowy email lub hasło');
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (

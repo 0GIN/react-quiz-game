@@ -9,8 +9,14 @@ export default function Navbar() {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    await logout();
-    navigate('/login');
+    console.log('🚪 Kliknięto przycisk wylogowania');
+    try {
+      await logout();
+      console.log('✅ Wylogowanie zakończone');
+      navigate('/login');
+    } catch (error) {
+      console.error('❌ Błąd wylogowania:', error);
+    }
   };
 
   return (

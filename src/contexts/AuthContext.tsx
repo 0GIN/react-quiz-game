@@ -44,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Funkcja pobierająca dane użytkownika z tabeli users
   const fetchUserData = async (userId: string) => {
+    console.log('📥 fetchUserData dla userId:', userId);
     const { data, error } = await supabase
       .from('users')
       .select('*')
@@ -51,10 +52,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .single();
 
     if (error) {
-      console.error('Błąd pobierania danych użytkownika:', error);
+      console.error('❌ Błąd pobierania danych użytkownika:', error);
       return null;
     }
 
+    console.log('✅ Dane użytkownika z bazy:', data);
     return data as User;
   };
 
@@ -70,16 +72,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        console.log('🔄 Inicjalizacja AuthContext...');
+        console.log('📡 Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
+        
+        // Timeout dla getSession (max 5 sekund)
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout: getSession() trwa zbyt długo')), 5000)
+        );
+        
+        const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+        console.log('✅ Sesja pobrana:', session ? 'istnieje' : 'brak');
         
         if (session?.user) {
           setSupabaseUser(session.user);
+          console.log('👤 Pobieram dane użytkownika...');
           const userData = await fetchUserData(session.user.id);
+          console.log('✅ Dane użytkownika pobrane:', userData?.username);
           setUser(userData);
         }
       } catch (error) {
-        console.error('Błąd inicjalizacji auth:', error);
+        console.error('❌ Błąd inicjalizacji auth:', error);
       } finally {
+        console.log('✅ AuthContext gotowy (loading = false)');
         setLoading(false);
       }
     };
@@ -203,9 +218,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Funkcja wylogowania
   const logout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setSupabaseUser(null);
+    console.log('🚪 Wykonuję logout w AuthContext...');
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('❌ Błąd signOut:', error);
+        throw error;
+      }
+      console.log('✅ Supabase signOut zakończony');
+      setUser(null);
+      setSupabaseUser(null);
+      console.log('✅ User i SupabaseUser ustawione na null');
+    } catch (error) {
+      console.error('❌ Błąd w logout():', error);
+      throw error;
+    }
   };
 
   // Role użytkownika
