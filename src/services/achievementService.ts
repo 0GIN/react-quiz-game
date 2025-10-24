@@ -185,7 +185,7 @@ export const ACHIEVEMENT_CATEGORIES: AchievementCategory[] = [
     title: '💯 Perfekcjonista',
     description: 'Osiągnij 100% celność w grze z min. 20 pytaniami',
     icon: '💯',
-    getCurrentProgress: (user) => 0, // Trzeba sprawdzać w historii gier
+  getCurrentProgress: () => 0, // Trzeba sprawdzać w historii gier
     milestones: [
       { level: 'bronze', target: 1, reward_fp: 200, reward_xp: 400, icon: '🥉', name: 'Bez Błędu' },
       { level: 'silver', target: 10, reward_fp: 500, reward_xp: 1000, icon: '🥈', name: 'Idealista' },

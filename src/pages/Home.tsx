@@ -5,7 +5,7 @@ import { Hero, Card, ProgressBar, ExperienceBar, StatsGrid } from '../components
 import flashPoint from '../assets/flash_point.png'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { MissionTracker, catchUpDailyMissions, synchronizeMissionProgress } from '../services/missionService'
+import { catchUpDailyMissions, synchronizeMissionProgress } from '../services/missionService'
 
 interface TopPlayer {
   id: string;
