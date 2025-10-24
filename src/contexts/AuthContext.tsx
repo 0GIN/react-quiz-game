@@ -139,13 +139,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (username: string, email: string, password: string) => {
     try {
       // 1. Sprawdź czy username jest zajęty
-      const { data: existingUser } = await supabase
+      const { data: existingUsers, error: checkError } = await supabase
         .from('users')
         .select('username')
-        .eq('username', username)
-        .single();
+        .eq('username', username);
 
-      if (existingUser) {
+      if (checkError && checkError.code !== 'PGRST116') {
+        return { success: false, error: 'Błąd sprawdzania nazwy użytkownika' };
+      }
+
+      if (existingUsers && existingUsers.length > 0) {
         return { success: false, error: 'Ta nazwa użytkownika jest już zajęta' };
       }
 
@@ -171,7 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             id: data.user.id,
             username,
             email,
-            password_hash: 'managed_by_supabase_auth', // Hasło zarządzane przez Supabase Auth
+            password_hash: 'managed_by_supabase_auth',
             avatar_url: 'guest_avatar.png',
             flash_points: 0,
             level: 1,
@@ -183,9 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ]);
 
       if (insertError) {
-        // Jeśli nie udało się dodać do users, usuń z auth
-        await supabase.auth.admin.deleteUser(data.user.id);
-        return { success: false, error: 'Błąd podczas tworzenia profilu użytkownika' };
+        return { success: false, error: `Błąd podczas tworzenia profilu: ${insertError.message}` };
       }
 
       // 4. Pobierz dane użytkownika
