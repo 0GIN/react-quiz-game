@@ -1,54 +1,268 @@
-# react-quiz-game
+# ⚡ QuizRush - Gra Quizowa Nowej Generacji
 
-A dynamic, social quiz duel platform created by Jan Ogiński and Szymon Mierzwicki. Built with **React, TypeScript, and Vite**.
+[![React](https://img.shields.io/badge/React-19.1.1-61DAFB?logo=react)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-7.1.10-646CFF?logo=vite)](https://vitejs.dev/)
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase)](https://supabase.com/)
 
-## Table of Contents
-* [About The Project](#about-the-project)
-* [Key Features (Planned)](#key-features-planned)
-* [Tech Stack](#tech-stack)
-* [Example Game Flow](#example-game-flow)
-* [Future Development](#future-development)
-* [Authors](#authors)
-* [React + Vite Setup](#react--vite-setup)
+Nowoczesna aplikacja webowa do rozgrywania quizów online. Rywalizuj z przyjaciółmi, zdobywaj FlashPoints, wspinaj się na szczyty rankingów i zdobywaj osiągnięcia!
 
 ---
 
-## About The Project
+## 🎮 Funkcje
 
-QuizRush is a dynamic, social web application focused on user competition through fast-paced quiz duels. The system (planned) will include a friends module, daily missions, and a point system to motivate regular play. It will allow users to log in, challenge friends to duels, and track their progress in the rankings.
+### Dla Użytkowników
+- **4 Tryby Gry**
+  - 🥊 **Duel** - Klasyczny pojedynek 1v1
+  - 👥 **Squad** - Drużynowa rywalizacja 2v2
+  - ⚡ **Blitz** - Szybka gra na czas z 3 życiami
+  - 🏆 **Master** - Pojedynek w wybranej kategorii
 
-The main goal of the project is to create an engaging entertainment platform that:
-* Allows users to compete and test their knowledge in the form of duels.
-* Builds a community through a system of friends and playing together.
-* Engages users through a point system, daily missions, and rankings.
-* Serves as a practical application of modern web technologies (React, TypeScript, Vite).
+- **System Postępu**
+  - ⚡ FlashPoints - waluta w grze
+  - 📈 System poziomów (XP)
+  - 🏅 Osiągnięcia i odznaki
+  - 🎯 Codzienne misje
 
-### Target Audience
-* Fans of quiz games and trivia apps.
-* Users looking for quick, competitive online entertainment.
-* Any internet user who wants to test their knowledge and compare it with others in various categories (e.g., history, geography, pop culture, sports).
+- **Social Features**
+  - 👥 System znajomych
+  - 💬 Czat w czasie rzeczywistym
+  - 🏆 Rankingi globalne i znajomych
+  - 🎮 Wyzwania między graczami
+
+- **Sklep**
+  - 🛒 Kupuj awatary, motywy i ulepszenia
+  - 💰 Wydawaj zdobyte FlashPoints
+
+### Dla Administratorów
+- 🛡️ Panel admina
+- 📊 Zarządzanie pytaniami
+- 👥 Zarządzanie użytkownikami
+- 📈 Statystyki platformy
 
 ---
 
-## Key Features (Planned)
+## 🚀 Szybki Start
 
-### User Features
-A logged-in user will be able to:
-* Manage their profile and password.
-* Add other users to their friends list and manage invitations.
-* Challenge a friend to a duel (real-time or asynchronous) in a selected category.
-* Join a quick, random duel with another player.
-* Solve quizzes (with single or multiple-choice questions) as part of a duel, often with a time limit per answer.
-* Receive immediate feedback on the duel's result.
-* Undertake daily missions (e.g., "Win 3 duels," "Answer 5 geography questions correctly").
-* Earn points for winning duels and completing missions.
-* View global and friends' ranking systems.
-* Browse their duel history and statistics.
-* Suggest their own questions for a given quiz category.
-* Report errors in questions.
+### Wymagania
+- Node.js 18+ 
+- npm lub yarn
+- Konto Supabase (darmowe)
 
-### Administrator Features
-An administrator (after logging into the admin panel) will have access to:
+### Instalacja
+
+```bash
+# Klonowanie repozytorium
+git clone https://github.com/0GIN/react-quiz-game.git
+cd react-quiz-game
+
+# Instalacja zależności
+npm install
+
+# Konfiguracja zmiennych środowiskowych
+cp .env.example .env
+# Edytuj .env i dodaj swoje klucze Supabase
+
+# Uruchomienie serwera deweloperskiego
+npm run dev
+```
+
+Aplikacja będzie dostępna na `http://localhost:5173`
+
+---
+
+## 🗄️ Konfiguracja Bazy Danych
+
+### 1. Utwórz projekt w Supabase
+1. Przejdź na [supabase.com](https://supabase.com)
+2. Utwórz nowy projekt
+3. Skopiuj **URL** i **anon key** z Settings → API
+
+### 2. Wykonaj schemat bazy danych
+1. Otwórz SQL Editor w Supabase
+2. Skopiuj zawartość `database/schema.sql`
+3. Wykonaj skrypt (kliknij "Run")
+
+### 3. Skonfiguruj autentykację
+1. Przejdź do Authentication → Providers
+2. Włącz **Email Provider**
+3. **Wyłącz** "Confirm email" (dla developmentu)
+4. Zapisz zmiany
+
+Szczegółowe instrukcje: [docs/DATABASE_SETUP_GUIDE.md](docs/DATABASE_SETUP_GUIDE.md)
+
+---
+
+## 📁 Struktura Projektu
+
+```
+react-quiz-game/
+├── src/
+│   ├── components/        # Komponenty React
+│   │   ├── Card.tsx
+│   │   ├── Navbar.tsx
+│   │   ├── Sidebar.tsx
+│   │   ├── ProtectedRoute.tsx
+│   │   └── ...
+│   ├── pages/            # Strony aplikacji
+│   │   ├── Home.tsx
+│   │   ├── Login.tsx
+│   │   ├── Ranking.tsx
+│   │   └── ...
+│   ├── contexts/         # React Context API
+│   │   └── AuthContext.tsx
+│   ├── lib/              # Utility i konfiguracja
+│   │   └── supabase.ts
+│   ├── styles/           # Style CSS
+│   │   ├── tokens.css
+│   │   └── ui.css
+│   └── assets/           # Obrazy, loga
+├── database/             # SQL schemas
+│   └── schema.sql
+├── docs/                 # Dokumentacja
+│   ├── AUTH_SETUP_GUIDE.md
+│   ├── DATABASE_SETUP_GUIDE.md
+│   ├── DATABASE_SCHEMA.md
+│   ├── EXPERIENCE_SYSTEM.md
+│   └── ROLES_SYSTEM.md
+└── public/               # Statyczne pliki
+```
+
+---
+
+## 🔐 System Ról
+
+QuizRush implementuje 3-poziomowy system ról:
+
+### 🌐 Guest (Gość)
+- Dostęp do strony głównej (wersja demo)
+- Przeglądanie regulaminu
+- Dostęp do formularzy logowania/rejestracji
+
+### 👤 User (Zalogowany)
+- Pełny dostęp do gier
+- Rankingi i statystyki
+- Czat i znajomi
+- Sklep i osiągnięcia
+
+### 🛡️ Admin
+- Wszystkie uprawnienia User +
+- Panel administracyjny
+- Zarządzanie pytaniami i użytkownikami
+
+Szczegóły: [docs/ROLES_SYSTEM.md](docs/ROLES_SYSTEM.md)
+
+---
+
+## 🛠️ Technologie
+
+### Frontend
+- **React 19.1.1** - Biblioteka UI
+- **TypeScript 5.x** - Typowanie statyczne
+- **Vite 7.1.10** - Build tool
+- **React Router DOM 6.x** - Routing
+
+### Backend & Database
+- **Supabase** - Backend as a Service
+  - PostgreSQL 15+ database
+  - Authentication
+  - Realtime subscriptions
+  - Storage
+
+### Dev Tools
+- **ESLint** - Linting
+- **PostCSS** - CSS processing
+
+---
+
+## 📜 Skrypty NPM
+
+```bash
+# Rozwój
+npm run dev          # Uruchom dev server
+
+# Produkcja
+npm run build        # Zbuduj dla produkcji
+npm run preview      # Podgląd build'a
+
+# Kod
+npm run lint         # Sprawdź kod ESLintem
+```
+
+---
+
+## 🎯 System Punktacji
+
+### FlashPoints (FP)
+- +100 FP - Wygrana w Duel
+- +150 FP - Wygrana w Squad
+- +50-200 FP - Wynik w Blitz
+- +200 FP - Wygrana w Master
+- +50 FP - Ukończenie Codziennej Misji
+- +500 FP - Odblokowanie Osiągnięcia
+
+### Experience (XP)
+- +10 XP - Każde pytanie
+- +25 XP - Poprawna odpowiedź
+- +100 XP - Wygrana gra
+- +200 XP - Bezbłędna gra (BONUS)
+
+Formuła XP: `100 + (poziom - 1) × 50`
+
+Szczegóły: [docs/EXPERIENCE_SYSTEM.md](docs/EXPERIENCE_SYSTEM.md)
+
+---
+
+## 🤝 Kontrybucja
+
+Kontrybucje są mile widziane! 
+
+1. Fork projektu
+2. Stwórz branch (`git checkout -b feature/AmazingFeature`)
+3. Commit zmian (`git commit -m 'Add some AmazingFeature'`)
+4. Push do branch (`git push origin feature/AmazingFeature`)
+5. Otwórz Pull Request
+
+---
+
+## 📄 Licencja
+
+Ten projekt jest licencjonowany na licencji MIT - szczegóły w pliku [LICENSE](LICENSE)
+
+---
+
+## 👨‍💻 Autorzy
+
+**Jan Ogiński & Szymon Mierzwicki**
+- GitHub: [@0GIN](https://github.com/0GIN)
+
+---
+
+## 🙏 Podziękowania
+
+- [React](https://reactjs.org/) - UI Library
+- [Supabase](https://supabase.com/) - Backend Platform
+- [Vite](https://vitejs.dev/) - Build Tool
+- [Material Symbols](https://fonts.google.com/icons) - Icons
+
+---
+
+## 📞 Kontakt
+
+Pytania? Problemy? Sugestie?
+
+
+
+---
+
+<div align="center">
+  
+**Stworzono z ⚡ przez Jan Ogiński & Szymon Mierzwicki**
+
+[⬆ Wróć do góry](#-quizrush---gra-quizowa-nowej-generacji)
+
+</div>
+
 * Adding new quizzes (categories) and questions.
 * Editing or deleting existing quizzes and questions.
 * Managing the daily mission system (creating, editing).

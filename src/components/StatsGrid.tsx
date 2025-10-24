@@ -22,11 +22,15 @@ interface StatsGridProps {
 }
 
 export default function StatsGrid({ gamesPlayed, accuracy, streak, level }: StatsGridProps) {
+  // Jeśli użytkownik nie grał jeszcze żadnych gier, pokaż "-" zamiast liczb
+  const displayAccuracy = gamesPlayed > 0 ? `${accuracy}%` : '-';
+  const displayStreak = gamesPlayed > 0 ? streak : '-';
+  
   return (
     <div className="stats-grid">
       <StatItem icon="🎮" label="Rozegrane" value={gamesPlayed} />
-      <StatItem icon="🎯" label="Celność" value={`${accuracy}%`} />
-      <StatItem icon="🔥" label="Passa" value={streak} />
+      <StatItem icon="🎯" label="Celność" value={displayAccuracy} />
+      <StatItem icon="🔥" label="Passa" value={displayStreak} />
       <StatItem icon="⭐" label="Poziom" value={level} />
     </div>
   )

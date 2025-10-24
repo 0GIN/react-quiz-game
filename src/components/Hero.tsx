@@ -1,9 +1,12 @@
+import { useNavigate } from 'react-router-dom'
 import duelLogo from '../assets/duel_logo.png'
 import squadLogo from '../assets/squad_logo.png'
 import blitzLogo from '../assets/blitz_logo.png'
 import masterLogo from '../assets/master_logo.png'
 
 export default function Hero() {
+  const navigate = useNavigate();
+  
   return (
     <section className="hero" aria-labelledby="hero-title">
       <div className="hero-inner">
@@ -19,7 +22,7 @@ export default function Hero() {
             <div className="game-mode-title">Squad</div>
             <div className="game-mode-description">2v2 drużynowa dominacja</div>
           </div>
-          <div className="game-mode-card">
+          <div className="game-mode-card" onClick={() => navigate('/game-blitz')} style={{ cursor: 'pointer' }}>
             <img src={blitzLogo} alt="" className="game-mode-icon-img" />
             <div className="game-mode-title">Blitz</div>
             <div className="game-mode-description">3 życia i walka na czas</div>

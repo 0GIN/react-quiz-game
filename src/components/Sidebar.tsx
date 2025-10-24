@@ -1,12 +1,75 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function Sidebar() {
-  // TODO: Replace with actual user role check from auth context
-  const isAdmin = true; // Temporary - set to true to show admin panel
+  const { isGuest, isAdmin } = useAuth();
   const location = useLocation()
 
   const isActive = (path: string) => location.pathname === path
 
+  // Guest (niezalogowany) - widzi tylko Home, Ranking (demo), Regulamin
+  if (isGuest) {
+    return (
+      <nav className="sidebar" aria-label="Główne menu aplikacji">
+        <ul>
+          <li><Link to="/" className={`nav-item ${isActive('/') ? 'active' : ''}`}><span className="nav-icon">🏠</span> Start</Link></li>
+          <li><Link to="/ranking" className={`nav-item ${isActive('/ranking') ? 'active' : ''}`}><span className="nav-icon">🏆</span> Ranking</Link></li>
+          <li><Link to="/rules" className={`nav-item ${isActive('/rules') ? 'active' : ''}`}><span className="nav-icon">📜</span> Regulamin</Link></li>
+          <li className="spacer"></li>
+          <li>
+            <div style={{ 
+              padding: '20px', 
+              background: 'linear-gradient(135deg, rgba(0,229,255,0.15) 0%, rgba(138,43,226,0.15) 100%)',
+              borderRadius: '16px',
+              textAlign: 'center',
+              border: '1px solid rgba(0,229,255,0.4)',
+              boxShadow: '0 4px 12px rgba(0,229,255,0.2)'
+            }}>
+              <p style={{ color: '#00E5FF', fontSize: '16px', marginBottom: '12px', fontWeight: 700 }}>
+                🎮 Zaloguj się!
+              </p>
+              <p style={{ color: '#B8B8D0', fontSize: '13px', lineHeight: 1.5, marginBottom: '20px' }}>
+                Uzyskaj pełny dostęp do gier, rankingów i misji!
+              </p>
+              <Link 
+                to="/login" 
+                className="btn secondary"
+                style={{ 
+                  display: 'block', 
+                  textDecoration: 'none', 
+                  padding: '12px',
+                  fontSize: '14px',
+                  marginBottom: '10px',
+                  background: 'rgba(0,229,255,0.2)',
+                  border: '2px solid #00E5FF',
+                  fontWeight: 600
+                }}
+              >
+                🔑 Zaloguj się
+              </Link>
+              <Link 
+                to="/register" 
+                className="btn primary"
+                style={{ 
+                  display: 'block', 
+                  textDecoration: 'none', 
+                  padding: '12px',
+                  fontSize: '14px',
+                  background: 'linear-gradient(135deg, #00E5FF 0%, #8A2BE2 100%)',
+                  border: 'none',
+                  fontWeight: 600
+                }}
+              >
+                � Dołącz Teraz!
+              </Link>
+            </div>
+          </li>
+        </ul>
+      </nav>
+    )
+  }
+
+  // User lub Admin (zalogowany)
   return (
     <nav className="sidebar" aria-label="Główne menu aplikacji">
       <ul>
