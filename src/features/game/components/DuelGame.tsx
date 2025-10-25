@@ -190,9 +190,24 @@ export default function DuelGame() {
 
     if (!currentRound) {
       // Brak rundy - trzeba wybrać kategorię
-      const isMyTurnToChoose = currentRoundNumber % 2 === 1 ? isPlayer1 : !isPlayer1;
+      // Sprawdź kto wybierał w poprzedniej rundzie
+      const previousRound = currentRounds.find(r => r.round_number === currentRoundNumber - 1);
       
-      console.log('📝 No round found, my turn to choose?', isMyTurnToChoose);
+      let isMyTurnToChoose: boolean;
+      if (previousRound) {
+        // Przeciwnik poprzedniego wybierającego
+        const previousChooser = previousRound.category_chooser_id;
+        isMyTurnToChoose = previousChooser !== user.id;
+      } else {
+        // Pierwsza runda - zawsze Gracz 1
+        isMyTurnToChoose = isPlayer1;
+      }
+      
+      console.log('📝 No round found, my turn to choose?', isMyTurnToChoose, {
+        currentRoundNumber,
+        previousRound: previousRound?.round_number,
+        previousChooser: previousRound?.category_chooser_id,
+      });
       
       if (isMyTurnToChoose) {
         setPhase('select_category');

@@ -712,7 +712,8 @@ export async function submitRoundAnswers(
           console.log('✅ Duel completed successfully', { completeData });
           console.log('💰 Rewards should now be added to users table');
         } else {
-          // Następna runda - następny gracz wybiera kategorię
+          // Następna runda - tylko zwiększ numer rundy
+          // Nowa runda zostanie stworzona gdy gracz wybierze kategorię
           console.log(`➡️ Moving to round ${roundNumber + 1}...`);
           const { error: nextRoundError } = await supabase
             .from('duel_matches')
@@ -727,7 +728,7 @@ export async function submitRoundAnswers(
             console.error('❌ Error moving to next round:', nextRoundError);
             throw nextRoundError;
           }
-          console.log('✅ Moved to next round successfully');
+          console.log('✅ Moved to next round successfully - waiting for category selection');
         }
       } else {
         // Ustaw turę na drugiego gracza (będzie odpowiadał)
