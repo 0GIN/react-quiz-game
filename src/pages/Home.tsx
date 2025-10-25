@@ -16,13 +16,14 @@
  * @page
  */
 
-import '../styles/ui.css'
+import '@/styles/ui.css'
 import { Link } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
-import { Hero, Card, ExperienceBar, StatsGrid } from '../components'
-import flashPoint from '../assets/flash_point.png'
+import { useAuth } from '@features/auth/hooks/useAuth'
+import { Hero, ExperienceBar, StatsGrid } from '@shared/components'
+import { Card, MaterialIcon } from '@shared/ui'
+import flashPoint from '@/assets/flash_point.png'
 import { useEffect, useState, useMemo } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 interface TopPlayer {
   id: string;
@@ -77,25 +78,25 @@ export default function Home() {
   const guestModes = [
     {
       key: 'blitz',
-      emoji: '⚡',
+      icon: 'bolt',
       title: 'Blitz',
       description: 'Trzy życia, szybkie pytania i rosnące tempo. Idealne na szybki trening.',
     },
     {
       key: 'duel',
-      emoji: '🥊',
+      icon: 'sports_mma',
       title: 'Duel',
       description: 'Pojedynek 1 na 1. Dziesięć pytań, jeden zwycięzca – udowodnij, że wiesz więcej.',
     },
     {
       key: 'squad',
-      emoji: '👥',
+      icon: 'groups',
       title: 'Squad',
       description: 'Dołącz do drużyny i współpracuj, by pokonać rywali w starciu 2 na 2.',
     },
     {
       key: 'master',
-      emoji: '🧠',
+      icon: 'psychology',
       title: 'Master',
       description: 'Wybierz ulubioną kategorię i pokaż mistrzowską wiedzę w tematycznym wyzwaniu.',
     },
@@ -124,7 +125,7 @@ export default function Home() {
           <div className="guest-modes-grid">
             {guestModes.map((mode) => (
               <div key={mode.key} className="guest-mode-card">
-                <span className="guest-mode-emoji" aria-hidden="true">{mode.emoji}</span>
+                <MaterialIcon icon={mode.icon} size={48} className="guest-mode-icon" />
                 <h3>{mode.title}</h3>
                 <p>{mode.description}</p>
               </div>

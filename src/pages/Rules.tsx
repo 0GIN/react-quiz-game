@@ -1,4 +1,4 @@
-import { Card } from '../components';
+import { Card } from '@shared/ui';
 
 export default function Rules() {
   return (

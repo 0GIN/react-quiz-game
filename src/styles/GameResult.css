@@ -58,6 +58,14 @@
   margin-bottom: 24px;
 }
 
+.result-icon {
+  display: block;
+  margin-bottom: 10px;
+  animation: bounce 1s ease-in-out infinite;
+  color: currentColor;
+}
+
+/* Fallback dla starych emoji */
 .result-emoji {
   font-size: 3rem;
   display: block;

@@ -5,7 +5,33 @@
 [![Vite](https://img.shields.io/badge/Vite-7.1.10-646CFF?logo=vite)](https://vitejs.dev/)
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase)](https://supabase.com/)
 
-Nowoczesna aplikacja webowa do rozgrywania quizów online. Rywalizuj z przyjaciółmi, zdobywaj FlashPoints, wspinaj się na szczyty rankingów i zdobywaj osiągnięcia!
+Nowoczesna aplikacja webowa do rozgrywania quizów online z **profesjonalną architekturą feature-based**. Rywalizuj z przyjaciółmi, zdobywaj FlashPoints, wspinaj się na szczyty rankingów i zdobywaj osiągnięcia!
+
+> **🎉 Projekt został zreorganizowany według profesjonalnych standardów!**  
+> Zobacz: [ARCHITECTURE.md](./ARCHITECTURE.md) | [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) | [SUMMARY.md](./SUMMARY.md)
+
+---
+
+## 📂 Struktura Projektu
+
+Projekt wykorzystuje **Feature-Based Architecture** zamiast tradycyjnego type-based:
+
+```
+src/
+├── features/          # Funkcjonalności (auth, game, profile, shop, social, admin)
+├── shared/            # Reusable components, hooks, utils
+│   ├── ui/           # Atomic UI components
+│   ├── components/   # Business components
+│   ├── hooks/        # Custom React hooks
+│   └── utils/        # Utility functions
+├── api/              # API layer z error handling
+├── layouts/          # Layout components
+├── routes/           # Routing configuration
+├── constants/        # Stałe i konfiguracje
+└── ...
+```
+
+**📚 Pełna dokumentacja:** [ARCHITECTURE.md](./ARCHITECTURE.md)
 
 ---
 
@@ -73,23 +99,33 @@ Aplikacja będzie dostępna na `http://localhost:5173`
 
 ## 🗄️ Konfiguracja Bazy Danych
 
-### 1. Utwórz projekt w Supabase
-1. Przejdź na [supabase.com](https://supabase.com)
-2. Utwórz nowy projekt
-3. Skopiuj **URL** i **anon key** z Settings → API
+### Szybki Start
 
-### 2. Wykonaj schemat bazy danych
-1. Otwórz SQL Editor w Supabase
-2. Skopiuj zawartość `database/schema.sql`
-3. Wykonaj skrypt (kliknij "Run")
+**⚠️ WAŻNE:** Aplikacja wymaga zaseedowanej bazy danych z pytaniami i kategoriami!
 
-### 3. Skonfiguruj autentykację
-1. Przejdź do Authentication → Providers
-2. Włącz **Email Provider**
-3. **Wyłącz** "Confirm email" (dla developmentu)
-4. Zapisz zmiany
+1. **Utwórz projekt w Supabase**
+   - Przejdź na [supabase.com](https://supabase.com)
+   - Utwórz nowy projekt
+   - Skopiuj **URL** i **anon key** z Settings → API
 
-Szczegółowe instrukcje: [docs/DATABASE_SETUP_GUIDE.md](docs/DATABASE_SETUP_GUIDE.md)
+2. **Dodaj dane do bazy** (WYMAGANE!)
+   - Otwórz **SQL Editor** w Supabase Dashboard
+   - Skopiuj całą zawartość `database/complete-setup.sql`
+   - Wklej i kliknij **Run**
+   
+   **Ten skrypt dodaje:**
+   - ✅ 100 pytań quizowych (Historia, Geografia, Nauka, Sport, etc.)
+   - ✅ 8 kategorii
+   - ✅ 4 tryby gry
+   - ✅ Przedmioty do sklepu
+   - ✅ RLS policies
+
+3. **Skonfiguruj autentykację**
+   - Przejdź do Authentication → Providers
+   - Włącz **Email Provider**
+   - **Wyłącz** "Confirm email" (dla developmentu)
+
+📚 **Szczegółowa instrukcja:** [DATABASE_SETUP.md](./DATABASE_SETUP.md)
 
 ---
 

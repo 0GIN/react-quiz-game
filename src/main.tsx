@@ -1,57 +1,36 @@
 import { StrictMode, lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import './styles/tokens.css'
-import { AuthProvider } from './contexts/AuthContext'
-import Layout from './components/Layout'
-import Home from './pages/Home'
-import ProtectedRoute from './components/ProtectedRoute'
-import GuestRoute from './components/GuestRoute'
+import '@styles/tokens.css'
+import { AuthProvider } from '@features/auth'
+import { MainLayout } from '@/layouts'
+import Home from '@pages/Home'
+import { ProtectedRoute, GuestRoute, LoadingFallback } from '@shared/components'
 
 // Lazy load - ładuj komponenty tylko gdy są potrzebne (code splitting)
-const Login = lazy(() => import('./pages/Login'))
-const Register = lazy(() => import('./pages/Register'))
-const Rules = lazy(() => import('./pages/Rules'))
-const GameBlitz = lazy(() => import('./pages/GameBlitz'))
-const GameResult = lazy(() => import('./pages/GameResult'))
-const Profile = lazy(() => import('./pages/Profile'))
-const Ranking = lazy(() => import('./pages/Ranking'))
-const GameHistory = lazy(() => import('./pages/GameHistory'))
-const Shop = lazy(() => import('./pages/Shop'))
-const Friends = lazy(() => import('./pages/Friends'))
-const FriendSearch = lazy(() => import('./pages/FriendSearch'))
-const Chat = lazy(() => import('./pages/Chat'))
-const TopPlayers = lazy(() => import('./pages/TopPlayers'))
-const Settings = lazy(() => import('./pages/Settings'))
-const AddQuestion = lazy(() => import('./pages/AddQuestion'))
-const AdminPanel = lazy(() => import('./pages/AdminPanel'))
-
-// Loading fallback component
-function PageLoader() {
-  return (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      minHeight: '60vh',
-      color: '#00E5FF',
-      fontSize: '18px',
-      fontWeight: 600
-    }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚡</div>
-        <div>Ładowanie...</div>
-      </div>
-    </div>
-  )
-}
+const Login = lazy(() => import('@features/auth/components/Login'))
+const Register = lazy(() => import('@features/auth/components/Register'))
+const Rules = lazy(() => import('@pages/Rules'))
+const GameBlitz = lazy(() => import('@features/game/components/GameBlitz'))
+const GameResult = lazy(() => import('@features/game/components/GameResult'))
+const GameHistory = lazy(() => import('@features/game/components/GameHistory'))
+const Profile = lazy(() => import('@features/profile/components/Profile'))
+const Shop = lazy(() => import('@features/shop/components/Shop'))
+const Friends = lazy(() => import('@features/social/components/Friends'))
+const FriendSearch = lazy(() => import('@features/social/components/FriendSearch'))
+const Chat = lazy(() => import('@features/social/components/Chat'))
+const AddQuestion = lazy(() => import('@features/admin/components/AddQuestion'))
+const AdminPanel = lazy(() => import('@features/admin/components/AdminPanel'))
+const Ranking = lazy(() => import('@pages/Ranking'))
+const TopPlayers = lazy(() => import('@pages/TopPlayers'))
+const Settings = lazy(() => import('@pages/Settings'))
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
       <BrowserRouter>
-        <Layout>
-          <Suspense fallback={<PageLoader />}>
+        <MainLayout>
+          <Suspense fallback={<LoadingFallback />}>
             <Routes>
               {/* Strona główna - dostępna dla wszystkich (guest widzi wersję demo) */}
               <Route path="/" element={<Home />} />
@@ -84,7 +63,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminPanel /></ProtectedRoute>} />
             </Routes>
           </Suspense>
-        </Layout>
+        </MainLayout>
       </BrowserRouter>
     </AuthProvider>
   </StrictMode>,

@@ -1,9 +1,9 @@
-import '../styles/ui.css'
-import { Card } from '../components'
+import '@/styles/ui.css'
+import { Card } from '@shared/ui'
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
-import { useAuth } from '../contexts/AuthContext'
-import flashPoint from '../assets/flash_point.png'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@features/auth/hooks/useAuth'
+import flashPoint from '@/assets/flash_point.png'
 
 interface RankedPlayer {
   id: string;

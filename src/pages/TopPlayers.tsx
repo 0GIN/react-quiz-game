@@ -1,5 +1,5 @@
-import { Card } from '../components';
-import flashPoint from '../assets/flash_point.png';
+import { Card } from '@shared/ui';
+import flashPoint from '@/assets/flash_point.png';
 
 export default function TopPlayers() {
   return (
