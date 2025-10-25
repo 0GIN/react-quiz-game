@@ -699,7 +699,7 @@ export async function submitRoundAnswers(
       if (bothAnswered) {
         // Obaj odpowiedzieli - przejdź do następnej rundy lub zakończ
         if (roundNumber >= 5) {
-          // Koniec pojedynku
+          // Koniec pojedynku (5 rund)
           console.log('🏁 Final round completed, finishing duel...', { matchId });
           
           const { data: completeData, error: completeError } = await supabase.rpc('complete_duel_match', { p_match_id: matchId });
