@@ -245,14 +245,16 @@ export async function saveGameResult(
       console.log('ℹ️ Pomijam zapisywanie odpowiedzi – gra korzystała z fallbackowych danych.');
     }
 
-    // 8. Oblicz nowy streak (tylko dla trybów PvP, nie dla Blitz!)
-    const isWin = result.gameMode === 'blitz' 
-      ? result.questionsAnswered >= 10 // Blitz: wygrana jeśli odpowiedział na min. 10 pytań
+    // 8. Oblicz nowy streak
+    // Blitz = bez wyniku (nie liczy się do statystyk win/loss/draw/total, nie resetuje streaka)
+    // Inne tryby PvP = wygrana zwiększa, przegrana resetuje
+    const isBlitzMode = result.gameMode === 'blitz';
+    const isWin = isBlitzMode 
+      ? false // Blitz nie jest ani wygraną ani przegraną
       : result.correctAnswers > result.wrongAnswers; // Inne tryby: więcej poprawnych
+    const isDraw = false; // Tylko Duel może mieć remis
     
-    const shouldCountToWinRate = result.gameMode !== 'blitz'; // Blitz nie liczy się do win rate
-    
-    const newCurrentStreak = isWin ? userData.current_streak + 1 : 0;
+    const newCurrentStreak = isWin ? userData.current_streak + 1 : (isBlitzMode ? userData.current_streak : 0);
     const newBestStreak = Math.max(userData.best_streak, result.bestStreak, newCurrentStreak);
 
     // 9. Aktualizuj statystyki użytkownika
@@ -263,10 +265,11 @@ export async function saveGameResult(
         level: newLevel,
         experience: remainingXP,
         experience_to_next_level: newRequiredXP,
-        total_games_played: userData.total_games_played + 1,
-        // Blitz nie liczy się do win/loss statistics
-        total_wins: shouldCountToWinRate && isWin ? userData.total_wins + 1 : userData.total_wins,
-        total_losses: shouldCountToWinRate && !isWin ? userData.total_losses + 1 : userData.total_losses,
+        // Blitz NIE liczy się do total_games_played
+        total_games_played: isBlitzMode ? userData.total_games_played : userData.total_games_played + 1,
+        total_wins: isWin ? userData.total_wins + 1 : userData.total_wins,
+        total_losses: !isWin && !isDraw && !isBlitzMode ? userData.total_losses + 1 : userData.total_losses,
+        // Blitz nie liczy się do total_draws
         total_correct_answers: userData.total_correct_answers + result.correctAnswers,
         total_questions_answered: userData.total_questions_answered + result.questionsAnswered,
         current_streak: newCurrentStreak,

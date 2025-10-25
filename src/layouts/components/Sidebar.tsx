@@ -23,12 +23,72 @@
 
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@features/auth'
+import { useState, useEffect } from 'react'
+import { getTotalUnreadCount } from '@/services/messageService'
+import { supabase } from '@/lib/supabase'
 
 export default function Sidebar() {
-  const { isGuest, isAdmin } = useAuth();
+  const { isGuest, isAdmin, user } = useAuth();
   const location = useLocation()
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const isActive = (path: string) => location.pathname === path
+
+  // Pobierz liczbę nieprzeczytanych wiadomości
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchUnreadCount = async () => {
+      const count = await getTotalUnreadCount(user.id);
+      setUnreadCount(count);
+    };
+
+    fetchUnreadCount();
+
+    // Odświeżaj co 30 sekund
+    const interval = setInterval(fetchUnreadCount, 30000);
+    
+    // Odświeżaj po custom event (np. po przeczytaniu wiadomości)
+    const handleRefresh = () => fetchUnreadCount();
+    window.addEventListener('refreshUnreadCount', handleRefresh);
+    
+    // Real-time subskrypcja dla nowych wiadomości
+    const messagesChannel = supabase
+      .channel(`sidebar-messages:${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `receiver_id=eq.${user.id}`,
+        },
+        () => {
+          console.log('📨 Nowa wiadomość - odświeżam licznik sidebar');
+          fetchUnreadCount();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `receiver_id=eq.${user.id}`,
+        },
+        () => {
+          console.log('✅ Wiadomość przeczytana - odświeżam licznik sidebar');
+          fetchUnreadCount();
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('refreshUnreadCount', handleRefresh);
+      supabase.removeChannel(messagesChannel);
+    };
+  }, [user]);
 
   // Guest (niezalogowany) - widzi tylko Home, Ranking (demo), Regulamin
   if (isGuest) {
@@ -104,7 +164,14 @@ export default function Sidebar() {
         <li><Link to="/shop" className={`nav-item ${isActive('/shop') ? 'active' : ''}`}><span className="nav-icon">🛒</span> Sklep</Link></li>
         <li><Link to="/friends" className={`nav-item ${isActive('/friends') ? 'active' : ''}`}><span className="nav-icon">👥</span> Moi Znajomi</Link></li>
         <li><Link to="/find-friends" className={`nav-item ${isActive('/find-friends') ? 'active' : ''}`}><span className="nav-icon">🔍</span> Szukaj Znajomych</Link></li>
-        <li><Link to="/chat" className={`nav-item ${isActive('/chat') ? 'active' : ''}`}><span className="nav-icon">💬</span> Czat</Link></li>
+        <li>
+          <Link to="/chat" className={`nav-item ${isActive('/chat') ? 'active' : ''}`} style={{ position: 'relative' }}>
+            <span className="nav-icon">💬</span> Czat
+            {unreadCount > 0 && (
+              <span className="notification-badge">{unreadCount}</span>
+            )}
+          </Link>
+        </li>
         <li><Link to="/top-players" className={`nav-item ${isActive('/top-players') ? 'active' : ''}`}><span className="nav-icon">👑</span> Najlepsi</Link></li>
         <li className="spacer"></li>
         <li><Link to="/add-question" className={`nav-item add ${isActive('/add-question') ? 'active' : ''}`}><span className="nav-icon">➕</span> Dodaj Pytanie</Link></li>

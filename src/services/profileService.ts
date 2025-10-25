@@ -54,6 +54,7 @@ export interface FullUserProfile extends UserProfile {
     total_games_played: number;
     total_wins: number;
     total_losses: number;
+    total_draws: number;
     total_correct_answers: number;
     total_questions_answered: number;
     current_streak: number;
@@ -109,7 +110,7 @@ export async function getProfile(
       .from('users')
       .select(`
         id, username, email, avatar_url, flash_points, level, experience,
-        total_games_played, total_wins, total_losses,
+        total_games_played, total_wins, total_losses, total_draws,
         total_correct_answers, total_questions_answered,
         current_streak, best_streak
       `)

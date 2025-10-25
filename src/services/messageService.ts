@@ -359,16 +359,23 @@ export function subscribeToMessages(
         event: 'INSERT',
         schema: 'public',
         table: 'messages',
-        filter: `sender_id=eq.${friendId},receiver_id=eq.${userId}`,
+        filter: `receiver_id=eq.${userId}`,
       },
       (payload) => {
-        console.log('📨 Nowa wiadomość:', payload);
-        onMessage(payload.new as Message);
+        const message = payload.new as Message;
+        // Sprawdź czy wiadomość jest od wybranego znajomego
+        if (message.sender_id === friendId) {
+          console.log('📨 Nowa wiadomość:', payload);
+          onMessage(message);
+        }
       }
     )
-    .subscribe();
+    .subscribe((status) => {
+      console.log('📡 Subscription status:', status);
+    });
 
   return () => {
+    console.log('🔌 Unsubscribing from messages');
     supabase.removeChannel(channel);
   };
 }
@@ -390,6 +397,60 @@ export async function getTotalUnreadCount(userId: string): Promise<number> {
   } catch (error) {
     console.error('❌ Error getting unread count:', error);
     return 0;
+  }
+}
+
+/**
+ * Pobierz ostatnie nieprzeczytane wiadomości dla powiadomień
+ */
+export async function getUnreadMessageNotifications(userId: string): Promise<Array<{
+  id: string;
+  sender_id: string;
+  sender_username: string;
+  sender_avatar: string;
+  created_at: string;
+  content: string;
+}>> {
+  try {
+    // Pobierz unikalne konwersacje z nieprzeczytanymi wiadomościami
+    const { data, error } = await supabase
+      .from('messages')
+      .select(`
+        id,
+        sender_id,
+        content,
+        created_at,
+        sender:users!messages_sender_id_fkey(
+          id,
+          username,
+          avatar_url
+        )
+      `)
+      .eq('receiver_id', userId)
+      .eq('is_read', false)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    // Grupuj po nadawcy i weź tylko najnowszą wiadomość od każdego
+    const uniqueSenders = new Map();
+    (data || []).forEach((msg: any) => {
+      if (!uniqueSenders.has(msg.sender_id)) {
+        uniqueSenders.set(msg.sender_id, {
+          id: msg.id,
+          sender_id: msg.sender_id,
+          sender_username: msg.sender.username,
+          sender_avatar: msg.sender.avatar_url,
+          created_at: msg.created_at,
+          content: msg.content,
+        });
+      }
+    });
+
+    return Array.from(uniqueSenders.values());
+  } catch (error) {
+    console.error('❌ Error getting unread message notifications:', error);
+    return [];
   }
 }
 

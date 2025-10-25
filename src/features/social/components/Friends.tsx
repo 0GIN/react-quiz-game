@@ -13,6 +13,7 @@ import {
   type Friend,
   type FriendRequest
 } from '@/services/friendService';
+import { getDisplayAvatar } from '@/utils/avatar';
 import '@/styles/ui.css';
 import '@/styles/Friends.css';
 
@@ -199,7 +200,7 @@ export default function Friends() {
                       }}
                       title={`Zobacz profil ${friend.friend_data.username}`}
                     >
-                      {friend.friend_data.avatar_url || '😀'}
+                      {getDisplayAvatar(friend.friend_data.avatar_url)}
                       {online && <span className="online-badge"></span>}
                     </div>
 
@@ -289,7 +290,7 @@ export default function Friends() {
                       border: '2px solid #00E5FF'
                     }}
                   >
-                    {request.requester_data.avatar_url || '😀'}
+                    {getDisplayAvatar(request.requester_data.avatar_url)}
                   </div>
 
                   <div className="friend-info">

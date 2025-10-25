@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@features/auth';
 import { Card, MaterialIcon } from '@shared/ui';
 import {
@@ -10,10 +11,12 @@ import {
   type Conversation,
   type MessageWithUser,
 } from '@/services/messageService';
+import { getDisplayAvatar } from '@/utils/avatar';
 import '@/styles/ui.css';
 
 export default function Chat() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedFriend, setSelectedFriend] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<MessageWithUser[]>([]);
@@ -31,9 +34,26 @@ export default function Chat() {
         const convs = await getConversations(user.id);
         setConversations(convs);
         
-        // Automatycznie wybierz pierwszą konwersację
-        if (convs.length > 0 && !selectedFriend) {
-          setSelectedFriend(convs[0]);
+        // Sprawdź czy jest userId w URL
+        const userIdFromUrl = searchParams.get('userId');
+        
+        if (userIdFromUrl) {
+          // Znajdź konwersację z tym użytkownikiem
+          const targetConversation = convs.find(c => c.friend_id === userIdFromUrl);
+          if (targetConversation) {
+            setSelectedFriend(targetConversation);
+          } else {
+            // Jeśli nie ma konwersacji, ale jest userId, możemy utworzyć nową
+            // Na razie wybieramy pierwszą dostępną
+            if (convs.length > 0) {
+              setSelectedFriend(convs[0]);
+            }
+          }
+        } else {
+          // Automatycznie wybierz pierwszą konwersację
+          if (convs.length > 0 && !selectedFriend) {
+            setSelectedFriend(convs[0]);
+          }
         }
       } catch (error) {
         console.error('Error fetching conversations:', error);
@@ -43,7 +63,7 @@ export default function Chat() {
     };
 
     fetchConversations();
-  }, [user?.id]);
+  }, [user?.id, searchParams]);
 
   // Pobierz wiadomości gdy wybierzemy znajomego
   useEffect(() => {
@@ -65,6 +85,9 @@ export default function Chat() {
               : conv
           )
         );
+        
+        // Odśwież licznik w sidebar i navbar
+        window.dispatchEvent(new Event('refreshUnreadCount'));
       } catch (error) {
         console.error('Error fetching messages:', error);
       }
@@ -76,16 +99,34 @@ export default function Chat() {
     const unsubscribe = subscribeToMessages(
       user.id,
       selectedFriend.friend_id,
-      (newMsg) => {
-        setMessages(prev => [...prev, newMsg as any]);
-        markAsRead(user.id, selectedFriend.friend_id);
+      async (newMsg) => {
+        // Realtime zwraca tylko Message bez relacji sender/receiver
+        // Dodajemy dane ręcznie z selectedFriend
+        const enrichedMessage = {
+          ...newMsg,
+          sender: {
+            id: newMsg.sender_id,
+            username: selectedFriend.friend_username,
+            avatar_url: selectedFriend.friend_avatar,
+            level: selectedFriend.friend_level,
+          },
+          receiver: {
+            id: user.id,
+            username: user.username,
+            avatar_url: user.avatar_url || '😀',
+            level: user.level,
+          }
+        };
+        
+        setMessages(prev => [...prev, enrichedMessage as any]);
+        await markAsRead(user.id, selectedFriend.friend_id);
       }
     );
 
     return () => {
       unsubscribe();
     };
-  }, [user?.id, selectedFriend?.friend_id]);
+  }, [user?.id, user?.username, user?.avatar_url, user?.level, selectedFriend?.friend_id, selectedFriend?.friend_username, selectedFriend?.friend_avatar, selectedFriend?.friend_level]);
 
   // Scroll do dołu przy nowych wiadomościach
   useEffect(() => {
@@ -107,14 +148,14 @@ export default function Chat() {
         setMessages(prev => [...prev, result.message as any]);
         setNewMessage('');
         
-        // Aktualizuj ostatnią wiadomość w liście konwersacji
+        // Aktualizuj ostatnią wiadomość w liście konwersacji (użyj created_at z bazy danych)
         setConversations(prev =>
           prev.map(conv =>
             conv.friend_id === selectedFriend.friend_id
               ? {
                   ...conv,
                   last_message: newMessage,
-                  last_message_time: new Date().toISOString(),
+                  last_message_time: result.message?.created_at || new Date().toISOString(),
                 }
               : conv
           )
@@ -130,10 +171,13 @@ export default function Chat() {
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
+    
+    // Upewnij się, że obie daty są w tej samej strefie czasowej
     const diffMs = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 0) {
+    // Jeśli różnica jest ujemna lub bardzo mała, traktuj jako "dzisiaj"
+    if (diffDays <= 0) {
       // Dzisiaj - pokaż godzinę
       return date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
     } else if (diffDays === 1) {
@@ -216,8 +260,9 @@ export default function Chat() {
                     position: 'relative',
                     flexShrink: 0
                   }}
-                  dangerouslySetInnerHTML={{ __html: conv.friend_avatar }}
-                />
+                >
+                  {getDisplayAvatar(conv.friend_avatar)}
+                </div>
                 {conv.is_online && (
                   <span 
                     className="online-indicator"
@@ -271,8 +316,9 @@ export default function Chat() {
                     border: '2px solid #00E5FF',
                     flexShrink: 0
                   }}
-                  dangerouslySetInnerHTML={{ __html: selectedFriend.friend_avatar }}
-                />
+                >
+                  {getDisplayAvatar(selectedFriend.friend_avatar)}
+                </div>
                 {selectedFriend.is_online && (
                   <span 
                     className="online-indicator"
@@ -328,7 +374,7 @@ export default function Chat() {
                             border: '2px solid #00E5FF'
                           }}
                         >
-                          {msg.sender.avatar_url || '�'}
+                          {getDisplayAvatar(msg.sender.avatar_url)}
                         </div>
                       )}
                       <div className="message-content">

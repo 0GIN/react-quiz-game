@@ -160,7 +160,8 @@ export interface AchievementCategory {
 export interface Category {
   id: number;
   name: string;
-  icon: string;
+  icon?: string; // Stare pole dla kompatybilności
+  icon_emoji: string; // Nowa nazwa z bazy danych
   is_active: boolean;
 }
 

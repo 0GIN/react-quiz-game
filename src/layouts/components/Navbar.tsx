@@ -16,11 +16,92 @@
 
 import { Link } from 'react-router-dom'
 import { useAuth } from '@features/auth'
+import { MaterialIcon } from '@shared/ui'
 import textLogo from '@assets/text_logo.png'
 import flashPoint from '@assets/flash_point.png'
+import { useState, useEffect } from 'react'
+import NotificationsDropdown from './NotificationsDropdown'
+import { getPendingRequests } from '@/services/friendService'
+import { getTotalUnreadCount } from '@/services/messageService'
+import { supabase } from '@/lib/supabase'
+import { getDisplayAvatar } from '@/utils/avatar'
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
+
+  // Sprawdź czy są nieprzeczytane powiadomienia
+  useEffect(() => {
+    const checkUnreadNotifications = async () => {
+      if (!user) {
+        setHasUnreadNotifications(false);
+        return;
+      }
+
+      try {
+        const pendingRequests = await getPendingRequests(user.id);
+        const unreadMessages = await getTotalUnreadCount(user.id);
+        // TODO: Dodać sprawdzanie wyzwań
+        // const pendingChallenges = await getPendingChallenges(user.id);
+        
+        setHasUnreadNotifications(pendingRequests.length > 0 || unreadMessages > 0);
+      } catch (error) {
+        console.error('Błąd sprawdzania powiadomień:', error);
+      }
+    };
+
+    checkUnreadNotifications();
+    
+    // Odświeżaj co minutę
+    const interval = setInterval(checkUnreadNotifications, 60000);
+    
+    // Listener na ręczne odświeżanie (np. po przeczytaniu wiadomości)
+    const handleRefresh = () => checkUnreadNotifications();
+    window.addEventListener('refreshUnreadCount', handleRefresh);
+    
+    // Real-time subskrypcje dla nowych wiadomości i zaproszeń
+    const messagesChannel = user ? supabase
+      .channel(`user-messages:${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `receiver_id=eq.${user.id}`,
+        },
+        () => {
+          console.log('📨 Nowa wiadomość - odświeżam powiadomienia');
+          checkUnreadNotifications();
+        }
+      )
+      .subscribe() : null;
+
+    const friendRequestsChannel = user ? supabase
+      .channel(`user-friend-requests:${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'friendships',
+          filter: `friend_id=eq.${user.id}`,
+        },
+        () => {
+          console.log('👥 Nowe zaproszenie - odświeżam powiadomienia');
+          checkUnreadNotifications();
+        }
+      )
+      .subscribe() : null;
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('refreshUnreadCount', handleRefresh);
+      if (messagesChannel) supabase.removeChannel(messagesChannel);
+      if (friendRequestsChannel) supabase.removeChannel(friendRequestsChannel);
+    };
+  }, [user]);
 
   const handleLogout = async () => {
     console.log('🚪 Kliknięto przycisk wylogowania');
@@ -55,7 +136,7 @@ export default function Navbar() {
                 background: '#0f0f23',
                 border: '2px solid #00E5FF'
               }}>
-                {user.avatar_url || '😀'}
+                {getDisplayAvatar(user.avatar_url)}
               </div>
             </button>
             <div className="user-meta">
@@ -67,13 +148,37 @@ export default function Navbar() {
                 </span>
               </span>
             </div>
-            <button className="icon-btn bell" aria-label="Powiadomienia">
-              🔔
-            </button>
-            <button 
+            <div>
+              <button 
+                className="icon-btn bell" 
+                aria-label="Powiadomienia"
+                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+              >
+                <MaterialIcon 
+                  icon={hasUnreadNotifications ? "notifications_unread" : "notifications"} 
+                  size={20} 
+                />
+              </button>
+              <NotificationsDropdown 
+                isOpen={isNotificationsOpen} 
+                onClose={() => {
+                  setIsNotificationsOpen(false);
+                  // Odśwież status powiadomień po zamknięciu
+                  if (user) {
+                    Promise.all([
+                      getPendingRequests(user.id),
+                      getTotalUnreadCount(user.id)
+                    ]).then(([requests, unreadMessages]) => {
+                      setHasUnreadNotifications(requests.length > 0 || unreadMessages > 0);
+                    }).catch(console.error);
+                  }
+                }} 
+              />
+            </div>
+            <button
               onClick={handleLogout}
               className="icon-btn"
-              style={{ 
+              style={{
                 marginLeft: '8px',
                 display: 'flex',
                 alignItems: 'center',
@@ -86,7 +191,7 @@ export default function Navbar() {
               aria-label="Wyloguj się"
               title="Wyloguj się"
             >
-              🚪
+              <MaterialIcon icon="logout" size={20} />
             </button>
           </>
         ) : (

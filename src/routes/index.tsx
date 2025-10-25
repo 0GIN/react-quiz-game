@@ -24,6 +24,9 @@ const TopPlayers = lazy(() => import('@/pages/TopPlayers'));
 const Settings = lazy(() => import('@/pages/Settings'));
 const AddQuestion = lazy(() => import('@/features/admin/components/AddQuestion'));
 const AdminPanel = lazy(() => import('@/features/admin/components/AdminPanel'));
+const DuelLobby = lazy(() => import('@/features/game/components/DuelLobby'));
+const DuelChallenge = lazy(() => import('@/features/game/components/DuelChallenge'));
+const DuelGame = lazy(() => import('@/features/game/components/DuelGame'));
 
 // Route guards
 import ProtectedRoute from '@/shared/components/ProtectedRoute';
@@ -128,6 +131,30 @@ export const routes: RouteObject[] = [
     element: (
       <ProtectedRoute>
         <Chat />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: ROUTES.DUEL,
+    element: (
+      <ProtectedRoute>
+        <DuelLobby />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: ROUTES.DUEL_CHALLENGE,
+    element: (
+      <ProtectedRoute>
+        <DuelChallenge />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: ROUTES.DUEL_GAME,
+    element: (
+      <ProtectedRoute>
+        <DuelGame />
       </ProtectedRoute>
     ),
   },

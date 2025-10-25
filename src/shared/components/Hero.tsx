@@ -26,7 +26,7 @@ export default function Hero() {
       <div className="hero-inner">
         <h1 id="hero-title" className="hero-main-title">Wybierz Tryb Gry</h1>
         <div className="hero-game-modes">
-          <div className="game-mode-card">
+          <div className="game-mode-card" onClick={() => navigate('/duel')} style={{ cursor: 'pointer' }}>
             <img src={duelLogo} alt="" className="game-mode-icon-img" />
             <div className="game-mode-title">Duel</div>
             <div className="game-mode-description">1v1 - kto jest lepszy?</div>

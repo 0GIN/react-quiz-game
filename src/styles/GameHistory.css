@@ -113,6 +113,14 @@
   border-left: 3px solid #f85149;
 }
 
+.history-item.draw {
+  border-left: 3px solid #FFC107;
+}
+
+.history-item.neutral {
+  border-left: 3px solid #8b949e;
+}
+
 .result-badge {
   padding: 4px 12px;
   border-radius: 12px;
@@ -129,6 +137,16 @@
 .result-badge.loss {
   background: rgba(248, 81, 73, 0.2);
   color: #f85149;
+}
+
+.result-badge.draw {
+  background: rgba(255, 193, 7, 0.2);
+  color: #FFC107;
+}
+
+.result-badge.neutral {
+  background: rgba(139, 148, 158, 0.2);
+  color: #8b949e;
 }
 
 .history-mode {

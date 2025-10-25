@@ -255,6 +255,20 @@ export default function Home() {
           </Link>
         </Card>
 
+        {/* Sklep - placeholder */}
+        <Card title="Sklep" className="shop">
+          <div style={{ padding: '20px', textAlign: 'center', color: '#888' }}>
+            {/* tutaj pojawi się zawartość sklepu */}
+          </div>
+        </Card>
+
+        {/* Nowości - placeholder */}
+        <Card title="Nowości" className="news">
+          <div style={{ padding: '20px', textAlign: 'center', color: '#888' }}>
+            {/* tutaj pojawią się nowości */}
+          </div>
+        </Card>
+
         {/* Aktywność - zaproszenia do znajomych */}
         <Card title="🔔 Aktywność" className="activity">
           {friendRequests.length > 0 ? (

@@ -24,6 +24,9 @@ const AdminPanel = lazy(() => import('@features/admin/components/AdminPanel'))
 const Ranking = lazy(() => import('@pages/Ranking'))
 const TopPlayers = lazy(() => import('@pages/TopPlayers'))
 const Settings = lazy(() => import('@pages/Settings'))
+const DuelLobby = lazy(() => import('@features/game/components/DuelLobby'))
+const DuelChallenge = lazy(() => import('@features/game/components/DuelChallenge'))
+const DuelGame = lazy(() => import('@features/game/components/DuelGame'))
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -41,6 +44,11 @@ createRoot(document.getElementById('root')!).render(
               {/* Gry */}
               <Route path="/game-blitz" element={<GameBlitz />} />
               <Route path="/game-result" element={<GameResult />} />
+              
+              {/* Duel */}
+              <Route path="/duel" element={<ProtectedRoute><DuelLobby /></ProtectedRoute>} />
+              <Route path="/duel/challenge" element={<ProtectedRoute><DuelChallenge /></ProtectedRoute>} />
+              <Route path="/duel/:matchId" element={<ProtectedRoute><DuelGame /></ProtectedRoute>} />
               
               {/* Strony tylko dla gości (niezalogowanych) */}
               <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />

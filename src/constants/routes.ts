@@ -12,6 +12,9 @@ export const ROUTES = {
   // Game
   GAME_BLITZ: '/game-blitz',
   GAME_RESULT: '/game-result',
+  DUEL: '/duel',
+  DUEL_CHALLENGE: '/duel/challenge',
+  DUEL_GAME: '/duel/:matchId',
   RULES: '/rules',
   
   // Profile & Stats
