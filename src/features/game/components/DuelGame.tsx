@@ -70,6 +70,16 @@ export default function DuelGame() {
   // Flaga zapobiegająca wielokrotnemu wysyłaniu
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Odśwież użytkownika gdy gra się kończy (tylko raz)
+  useEffect(() => {
+    if (phase === 'final_result') {
+      console.log('🎮 Game finished - refreshing user data...');
+      refreshUser().then(() => {
+        console.log('✅ User data refreshed after game completion');
+      });
+    }
+  }, [phase]); // Uruchom tylko gdy faza zmieni się na final_result
+
   // Załaduj dane pojedynku
   useEffect(() => {
     if (!matchId || !user) return;
@@ -79,6 +89,15 @@ export default function DuelGame() {
     // Subskrybuj zmiany w pojedynku
     const unsubscribe = subscribeToDuelMatch(matchId, async (updatedDuel) => {
       console.log('🔄 Duel updated via realtime:', updatedDuel);
+      
+      // Jeśli gra już zakończona, nie rób nic więcej (zapobiega zapętleniu)
+      if (updatedDuel.status === 'completed') {
+        console.log('✅ Match already completed, skipping phase determination');
+        setDuel(updatedDuel);
+        setPhase('final_result');
+        return;
+      }
+      
       setDuel(updatedDuel);
       
       // Przeładuj rundy żeby mieć aktualne dane
@@ -155,8 +174,7 @@ export default function DuelGame() {
 
     // Sprawdź czy pojedynek jest zakończony
     if (duelData.status === 'completed') {
-      console.log('✅ Match completed - refreshing user data...');
-      await refreshUser(); // Odśwież dane użytkownika (exp, flash points)
+      console.log('✅ Match completed');
       setPhase('final_result');
       return;
     }
@@ -554,8 +572,7 @@ export default function DuelGame() {
 
     const result = await surrenderDuel(matchId, user.id);
     if (result.success) {
-      console.log('🏳️ Surrendered successfully - refreshing user data...');
-      await refreshUser(); // Odśwież dane użytkownika
+      console.log('🏳️ Surrendered successfully');
       // Przeładuj dane aby pokazać wynik
       await loadDuelData();
       setPhase('final_result');

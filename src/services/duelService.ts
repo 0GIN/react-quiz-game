@@ -448,18 +448,29 @@ export async function selectCategoryForRound(
     }
 
     // Losuj 3 pytania
-    const shuffled = rawQuestions.sort(() => Math.random() - 0.5);
+    const shuffled = [...rawQuestions];
+    // Fisher-Yates shuffle
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
     const selectedRaw = shuffled.slice(0, 3);
 
     // Przekształć pytania do formatu DuelQuestion
     const selectedQuestions: DuelQuestion[] = selectedRaw.map(q => {
-      // Losuj kolejność odpowiedzi
+      // Losuj kolejność odpowiedzi - Fisher-Yates
       const answers = [
         { letter: 'A' as const, text: q.correct_answer, isCorrect: true },
         { letter: 'B' as const, text: q.wrong_answer_1, isCorrect: false },
         { letter: 'C' as const, text: q.wrong_answer_2, isCorrect: false },
         { letter: 'D' as const, text: q.wrong_answer_3, isCorrect: false },
-      ].sort(() => Math.random() - 0.5);
+      ];
+      
+      // Fisher-Yates shuffle dla odpowiedzi
+      for (let i = answers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [answers[i], answers[j]] = [answers[j], answers[i]];
+      }
 
       const correctLetter = answers.find(a => a.isCorrect)!.letter;
 
