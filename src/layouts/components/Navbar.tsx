@@ -17,7 +17,6 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '@features/auth'
 import textLogo from '@assets/text_logo.png'
-import guestAvatar from '@assets/guest_avatar.png'
 import flashPoint from '@assets/flash_point.png'
 
 export default function Navbar() {
@@ -45,7 +44,19 @@ export default function Navbar() {
         {user ? (
           <>
             <button className="avatar-btn" aria-label={`Profil użytkownika, ${user.username}`}>
-              <img src={guestAvatar} alt={`${user.username} avatar`} className="avatar-img" />
+              <div style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '20px',
+                background: '#0f0f23',
+                border: '2px solid #00E5FF'
+              }}>
+                {user.avatar_url || '😀'}
+              </div>
             </button>
             <div className="user-meta">
               <span className="user-name">

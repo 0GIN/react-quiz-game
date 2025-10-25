@@ -20,8 +20,10 @@ export default defineConfig({
       // Optymalizacja React
       babel: {
         plugins: [
-          // Automatyczne usuwanie console.log w produkcji
-          ['transform-remove-console', { exclude: ['error', 'warn'] }]
+          // Automatyczne usuwanie console.log TYLKO w produkcji
+          ...(process.env.NODE_ENV === 'production' 
+            ? [['transform-remove-console', { exclude: ['error', 'warn'] }]] 
+            : [])
         ]
       }
     })

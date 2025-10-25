@@ -230,28 +230,83 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Funkcja pobierająca dane użytkownika z tabeli users
-  const fetchUserData = async (userId: string) => {
-    console.log('📥 fetchUserData dla userId:', userId);
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .single();
-
-    if (error) {
-      console.error('❌ Błąd pobierania danych użytkownika:', error);
-      return null;
-    }
-
-    if (!data) {
-      console.error('❌ Brak danych użytkownika w users dla userId:', userId);
-      return null;
-    }
-
-    console.log('✅ Dane użytkownika z bazy:', data);
+  // NOWA WERSJA: Z timeoutem i fallbackiem
+  const fetchUserData = async (userId: string, supabaseUserObj?: any): Promise<User | null> => {
+    console.log('📥 fetchUserData START dla userId:', userId);
     
-    // Tabela users ma już wszystkie potrzebne kolumny
-    return data as User;
+    try {
+      console.log('🔍 Wykonuję query do tabeli users...');
+      
+      // Timeout po 3 sekundach
+      const timeoutPromise = new Promise<null>((resolve) => {
+        setTimeout(() => {
+          console.warn('⏰ Query timeout po 3s - zwracam fallback');
+          resolve(null);
+        }, 3000);
+      });
+      
+      const queryPromise = supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      const result = await Promise.race([queryPromise, timeoutPromise]);
+      
+      if (!result) {
+        // Timeout - zwróć basic user
+        console.warn('⚠️ Timeout - zwracam podstawowe dane z auth.user');
+        return createFallbackUser(userId, supabaseUserObj);
+      }
+      
+      const { data, error } = result as any;
+
+      console.log('📦 Query zakończone. Error:', error, 'Data:', data);
+
+      if (error) {
+        console.error('❌ Błąd pobierania danych użytkownika:', error);
+        console.error('❌ Error code:', error.code);
+        return createFallbackUser(userId, supabaseUserObj);
+      }
+
+      if (!data) {
+        console.error('❌ Brak danych użytkownika w users');
+        return createFallbackUser(userId, supabaseUserObj);
+      }
+
+      console.log('✅ Dane użytkownika z bazy:', data);
+      return data as User;
+    } catch (ex) {
+      console.error('💥 EXCEPTION w fetchUserData:', ex);
+      return createFallbackUser(userId, supabaseUserObj);
+    }
+  };
+  
+  // Helper: tworzy podstawowego usera z auth.user gdy DB nie odpowiada
+  const createFallbackUser = (userId: string, supabaseUserObj?: any): User => {
+    const email = supabaseUserObj?.email || '';
+    const username = supabaseUserObj?.user_metadata?.username || email.split('@')[0] || 'user';
+    
+    console.log('🔄 Tworzę fallback user:', { userId, username, email });
+    
+    return {
+      id: userId,
+      username,
+      email,
+      avatar_url: '',
+      flash_points: 0,
+      level: 1,
+      experience: 0,
+      experience_to_next_level: 100,
+      total_games_played: 0,
+      total_wins: 0,
+      total_losses: 0,
+      total_correct_answers: 0,
+      total_questions_answered: 0,
+      current_streak: 0,
+      best_streak: 0,
+      is_admin: false,
+    };
   };
 
   // Odświeżanie danych użytkownika
@@ -264,22 +319,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Sprawdzenie sesji przy załadowaniu
   useEffect(() => {
-    // Natychmiast ustaw loading=false żeby nie blokować UI
-    setLoading(false);
+    let mounted = true;
+    let timeoutCompleted = false;
     
-    // Sprawdź sesję w tle (asynchronicznie)
+    // Sprawdź sesję PRZED ustawieniem loading=false
     const checkSession = async () => {
       try {
-        console.log('🔄 Sprawdzam sesję w tle...');
+        console.log('🔄 Sprawdzam sesję przy starcie...');
+        
+        // Timeout backup - jeśli po 5s nic się nie dzieje, odblokuj UI
+        const timeoutId = setTimeout(() => {
+          if (mounted && !timeoutCompleted) {
+            console.warn('⏰ checkSession TIMEOUT po 5s - wymuszam loading=false');
+            timeoutCompleted = true;
+            setLoading(false);
+          }
+        }, 5000);
+        
         const { data: { session } } = await supabase.auth.getSession();
         console.log('✅ Sesja sprawdzona:', session ? 'istnieje' : 'brak');
         
-        if (session?.user) {
+        if (session?.user && mounted) {
+          console.log('👤 Mam sesję - ładuję dane użytkownika...');
           setSupabaseUser(session.user);
-          const userData = await fetchUserData(session.user.id);
-          if (userData) {
+          const userData = await fetchUserData(session.user.id, session.user);
+          
+          if (mounted) {
             setUser(userData);
-            console.log('✅ Użytkownik załadowany z sesji');
+            console.log('✅ Użytkownik załadowany z sesji:', userData?.username);
           }
 
           const resolvedUsername = userData?.username
@@ -287,15 +354,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             || session.user.email?.split('@')[0]
             || 'user';
 
-          await ensureAuxiliaryRecords(session.user.id, resolvedUsername, session.user.email);
+          // ensureAuxiliaryRecords w tle - nie blokuj
+          ensureAuxiliaryRecords(session.user.id, resolvedUsername, session.user.email)
+            .catch(err => console.warn('⚠️ ensureAuxiliaryRecords error:', err));
+        } else {
+          console.log('❌ Brak sesji - użytkownik niezalogowany');
         }
+        
+        // Wyczyść timeout jeśli sesja została sprawdzona przed timeout
+        clearTimeout(timeoutId);
+        
       } catch (error) {
         console.error('❌ Błąd sprawdzania sesji:', error);
+      } finally {
+        // Ustaw loading=false tylko jeśli timeout jeszcze tego nie zrobił
+        if (mounted && !timeoutCompleted) {
+          console.log('✅ Kończę sprawdzanie sesji - loading=false');
+          setLoading(false);
+        }
       }
     };
     
-    // Uruchom w tle bez blokowania
+    // Uruchom sprawdzenie sesji
     checkSession();
+    
+    // Cleanup
+    return () => {
+      mounted = false;
+    };
 
     // Nasłuchiwanie zmian w sesji
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -303,7 +389,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (session?.user) {
         setSupabaseUser(session.user);
-        const userData = await fetchUserData(session.user.id);
+        const userData = await fetchUserData(session.user.id, session.user);
         setUser(userData);
 
         const resolvedUsername = userData?.username
@@ -345,7 +431,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('✅ Zalogowano do Supabase, user_id:', data.user.id);
         setSupabaseUser(data.user);
         
-        const userData = await fetchUserData(data.user.id);
+        const userData = await fetchUserData(data.user.id, data.user);
         console.log('📊 Pobrane dane użytkownika:', userData);
 
         const resolvedUsername = userData?.username
@@ -353,39 +439,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           || data.user.email?.split('@')[0]
           || 'user';
 
-  await ensureAuxiliaryRecords(data.user.id, resolvedUsername, trimmedEmail);
+        // Zawsze ustawiamy usera (albo z DB, albo fallback) - TO MUSI BYĆ PRZED ensureAuxiliaryRecords!
+        setUser(userData);
+        console.log('✅ User ustawiony w state:', userData?.username);
         
-        if (userData) {
-          setUser(userData);
-          console.log('✅ User ustawiony w state');
-        } else {
-          console.error('⚠️ fetchUserData zwróciło null!');
-          // Ustaw minimalny user object żeby nie blokować logowania
-          setUser({
-            id: data.user.id,
-            username: resolvedUsername,
-            email: data.user.email || '',
-            avatar_url: '',
-            flash_points: 0,
-            level: 1,
-            experience: 0,
-            experience_to_next_level: 100,
-            total_games_played: 0,
-            total_wins: 0,
-            total_losses: 0,
-            total_correct_answers: 0,
-            total_questions_answered: 0,
-            current_streak: 0,
-            best_streak: 0,
-            is_admin: false,
-          });
-        }
+        // ensureAuxiliaryRecords w tle - NIE blokuj logowania
+        ensureAuxiliaryRecords(data.user.id, resolvedUsername, trimmedEmail)
+          .catch(err => console.warn('⚠️ ensureAuxiliaryRecords error:', err));
         
-        // Aktualizuj last_login w users
-        await supabase
-          .from('users')
-          .update({ last_login: new Date().toISOString() })
-          .eq('id', data.user.id);
+        // Aktualizuj last_login w users (w tle, ignoruj błędy)
+        (async () => {
+          try {
+            await supabase
+              .from('users')
+              .update({ last_login: new Date().toISOString() })
+              .eq('id', data.user.id);
+            console.log('✅ last_login updated');
+          } catch {
+            console.warn('⚠️ last_login update failed (ignoruję)');
+          }
+        })();
       }
 
       return { success: true };

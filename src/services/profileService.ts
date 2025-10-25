@@ -102,10 +102,7 @@ export async function getProfile(
       return { success: false, error: profileError.message };
     }
 
-    // Sprawdź uprawnienia (jeśli profil prywatny)
-    if (!profileData.is_profile_public && userId !== viewerId) {
-      return { success: false, error: 'Profile is private' };
-    }
+    // Wszystkie profile są publiczne - usunięto sprawdzanie is_profile_public
 
     // Pobierz dane użytkownika
     const { data: userData, error: userError } = await supabase
@@ -459,3 +456,80 @@ export async function unequipItem(
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * Aktualizuje username użytkownika (z walidacją duplikatów)
+ */
+export async function updateUsername(
+  userId: string,
+  newUsername: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Walidacja
+    if (!newUsername || newUsername.trim().length < 3) {
+      return { success: false, error: 'Username musi mieć minimum 3 znaki' };
+    }
+
+    if (newUsername.length > 20) {
+      return { success: false, error: 'Username może mieć maksymalnie 20 znaków' };
+    }
+
+    // Sprawdź czy username już istnieje
+    const { data: existing } = await supabase
+      .from('users')
+      .select('id')
+      .eq('username', newUsername.trim())
+      .neq('id', userId)
+      .single();
+
+    if (existing) {
+      return { success: false, error: 'Ta nazwa użytkownika jest już zajęta' };
+    }
+
+    // Aktualizuj username
+    const { error } = await supabase
+      .from('users')
+      .update({ username: newUsername.trim() })
+      .eq('id', userId);
+
+    if (error) {
+      console.error('❌ Error updating username:', error);
+      return { success: false, error: error.message };
+    }
+
+    console.log('✅ Username updated successfully');
+    return { success: true };
+
+  } catch (error: any) {
+    console.error('❌ profileService: Error in updateUsername:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Aktualizuje avatar użytkownika
+ */
+export async function updateAvatar(
+  userId: string,
+  avatarUrl: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from('users')
+      .update({ avatar_url: avatarUrl })
+      .eq('id', userId);
+
+    if (error) {
+      console.error('❌ Error updating avatar:', error);
+      return { success: false, error: error.message };
+    }
+
+    console.log('✅ Avatar updated successfully');
+    return { success: true };
+
+  } catch (error: any) {
+    console.error('❌ profileService: Error in updateAvatar:', error);
+    return { success: false, error: error.message };
+  }
+}
+

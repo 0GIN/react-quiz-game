@@ -28,6 +28,8 @@ interface GuestRouteProps {
 export default function GuestRoute({ children }: GuestRouteProps) {
   const { user, loading } = useAuth();
 
+  console.log('GuestRoute - user:', !!user, 'loading:', loading);
+
   if (loading) {
     return (
       <div style={{

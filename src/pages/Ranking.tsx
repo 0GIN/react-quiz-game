@@ -1,6 +1,7 @@
 import '@/styles/ui.css'
 import { Card } from '@shared/ui'
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@features/auth/hooks/useAuth'
 import flashPoint from '@/assets/flash_point.png'
@@ -22,6 +23,7 @@ type SortOrder = 'desc' | 'asc';
 
 export default function Ranking() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [players, setPlayers] = useState<RankedPlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortField, setSortField] = useState<SortField>('flash_points');
@@ -239,7 +241,12 @@ export default function Ranking() {
                       </span>
                     </div>
                     <div className="player-col">
-                      <div className="player-info">
+                      <div 
+                        className="player-info"
+                        onClick={() => navigate(`/profile/${player.id}`)}
+                        style={{ cursor: 'pointer' }}
+                        title={`Zobacz profil ${player.username}`}
+                      >
                         <div className="player-avatar">
                           {isCurrentUser ? '👑' : '👤'}
                         </div>

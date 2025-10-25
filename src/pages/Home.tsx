@@ -24,6 +24,7 @@ import { Card, MaterialIcon } from '@shared/ui'
 import flashPoint from '@/assets/flash_point.png'
 import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
+import { getPendingRequests, acceptFriendRequest, type FriendRequest } from '@/services/friendService'
 
 interface TopPlayer {
   id: string;
@@ -34,6 +35,8 @@ interface TopPlayer {
 export default function Home() {
   const { isGuest, user } = useAuth();
   const [topPlayers, setTopPlayers] = useState<TopPlayer[]>([]);
+  const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
+  const [acceptingRequest, setAcceptingRequest] = useState<string | null>(null);
 
   // Pobierz top graczy
   useEffect(() => {
@@ -53,6 +56,42 @@ export default function Home() {
 
     fetchTopPlayers();
   }, []);
+
+  // Pobierz zaproszenia do znajomych
+  useEffect(() => {
+    const fetchFriendRequests = async () => {
+      if (!user?.id) return;
+
+      try {
+        const requests = await getPendingRequests(user.id);
+        setFriendRequests(requests.slice(0, 3)); // Tylko 3 ostatnie
+      } catch (error) {
+        console.error('Błąd pobierania zaproszeń:', error);
+      }
+    };
+
+    if (!isGuest) {
+      fetchFriendRequests();
+    }
+  }, [user?.id, isGuest]);
+
+  const handleAcceptRequest = async (requestId: string) => {
+    if (!user?.id) return;
+
+    setAcceptingRequest(requestId);
+    
+    try {
+      await acceptFriendRequest(requestId);
+      
+      // Usuń z listy
+      setFriendRequests(prev => prev.filter(req => req.id !== requestId));
+    } catch (error) {
+      console.error('Błąd akceptowania zaproszenia:', error);
+      alert('Nie udało się zaakceptować zaproszenia');
+    } finally {
+      setAcceptingRequest(null);
+    }
+  };
 
   // Memoizuj dane użytkownika - przelicz tylko gdy user się zmieni
   const userData = useMemo(() => ({
@@ -214,6 +253,93 @@ export default function Home() {
           >
             Zobacz pełny ranking →
           </Link>
+        </Card>
+
+        {/* Aktywność - zaproszenia do znajomych */}
+        <Card title="🔔 Aktywność" className="activity">
+          {friendRequests.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {friendRequests.map((request) => (
+                <div 
+                  key={request.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px',
+                    background: 'rgba(0,229,255,0.05)',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(0,229,255,0.1)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                    <div style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '24px',
+                      background: '#0f0f23',
+                      border: '2px solid #00E5FF'
+                    }}>
+                      {request.requester_data.avatar_url || '😀'}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, color: '#fff', marginBottom: '2px' }}>
+                        {request.requester_data.username}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#888' }}>
+                        zaprasza do znajomych
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleAcceptRequest(request.id)}
+                    disabled={acceptingRequest === request.id}
+                    className="btn primary"
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '13px',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {acceptingRequest === request.id ? '...' : 'Zaakceptuj'}
+                  </button>
+                </div>
+              ))}
+              <Link
+                to="/znajomi"
+                style={{
+                  display: 'block',
+                  marginTop: '8px',
+                  padding: '10px',
+                  textAlign: 'center',
+                  color: '#00E5FF',
+                  textDecoration: 'none',
+                  fontSize: '13px',
+                  fontWeight: 600
+                }}
+              >
+                Zobacz wszystkie zaproszenia →
+              </Link>
+            </div>
+          ) : (
+            <div style={{
+              padding: '40px 20px',
+              textAlign: 'center',
+              color: '#888'
+            }}>
+              <MaterialIcon icon="notifications_none" size={48} style={{ opacity: 0.5, marginBottom: '12px' }} />
+              <p style={{ fontSize: '14px', margin: 0 }}>
+                Brak nowych powiadomień
+              </p>
+              <p style={{ fontSize: '12px', marginTop: '8px', opacity: 0.7 }}>
+                Zaproszenia do znajomych i wyzwania pojawią się tutaj
+              </p>
+            </div>
+          )}
         </Card>
       </section>
     </main>
