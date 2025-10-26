@@ -195,7 +195,7 @@ export default function Home() {
 
       <section className="mosaic" aria-label="Panel informacyjny">
         {/* Statystyki z rozszerzonymi danymi */}
-        <Card title="Twoje Statystyki" className="stats">
+        <Card title="TWOJE STATYSTYKI" className="stats">
           <ExperienceBar 
             level={userData.level} 
             currentXP={userData.currentXP} 
@@ -223,7 +223,7 @@ export default function Home() {
         </Card>
 
         {/* Ranking */}
-        <Card title="� Top Gracze" className="ranking">
+        <Card title="TOP GRACZE" className="ranking">
           <ol className="ranking-list">
             {topPlayers.map((player, index) => (
               <li key={player.id}>
@@ -256,21 +256,21 @@ export default function Home() {
         </Card>
 
         {/* Sklep - placeholder */}
-        <Card title="Sklep" className="shop">
+        <Card title="SKLEP" className="shop">
           <div style={{ padding: '20px', textAlign: 'center', color: '#888' }}>
             {/* tutaj pojawi się zawartość sklepu */}
           </div>
         </Card>
 
         {/* Nowości - placeholder */}
-        <Card title="Nowości" className="news">
+        <Card title="NOWOŚCI" className="news">
           <div style={{ padding: '20px', textAlign: 'center', color: '#888' }}>
             {/* tutaj pojawią się nowości */}
           </div>
         </Card>
 
         {/* Aktywność - zaproszenia do znajomych */}
-        <Card title="🔔 Aktywność" className="activity">
+        <Card title="AKTYWNOŚĆ" className="activity">
           {friendRequests.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {friendRequests.map((request) => (

@@ -26,6 +26,20 @@ import { useAuth } from '@features/auth'
 import { useState, useEffect } from 'react'
 import { getTotalUnreadCount } from '@/services/messageService'
 import { supabase } from '@/lib/supabase'
+// MUI icons
+import HomeIcon from '@mui/icons-material/Home'
+import PersonIcon from '@mui/icons-material/Person'
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents'
+import ArticleIcon from '@mui/icons-material/Article'
+import HistoryIcon from '@mui/icons-material/History'
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
+import PeopleIcon from '@mui/icons-material/People'
+import SearchIcon from '@mui/icons-material/Search'
+import ChatBubbleIcon from '@mui/icons-material/ChatBubble'
+import LeaderboardIcon from '@mui/icons-material/Leaderboard'
+import AddIcon from '@mui/icons-material/AddBox'
+import SettingsIcon from '@mui/icons-material/Settings'
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 
 export default function Sidebar() {
   const { isGuest, isAdmin, user } = useAuth();
@@ -95,9 +109,21 @@ export default function Sidebar() {
     return (
       <nav className="sidebar" aria-label="Główne menu aplikacji">
         <ul>
-          <li><Link to="/" className={`nav-item ${isActive('/') ? 'active' : ''}`}><span className="nav-icon">🏠</span> Start</Link></li>
-          <li><Link to="/ranking" className={`nav-item ${isActive('/ranking') ? 'active' : ''}`}><span className="nav-icon">🏆</span> Ranking</Link></li>
-          <li><Link to="/rules" className={`nav-item ${isActive('/rules') ? 'active' : ''}`}><span className="nav-icon">📜</span> Regulamin</Link></li>
+          <li>
+            <Link to="/" className={`nav-item ${isActive('/') ? 'active' : ''}`}>
+              <HomeIcon className="nav-icon" sx={{ color: '#2bf7f4' }} /> Start
+            </Link>
+          </li>
+          <li>
+            <Link to="/ranking" className={`nav-item ${isActive('/ranking') ? 'active' : ''}`}>
+              <EmojiEventsIcon className="nav-icon" /> Ranking
+            </Link>
+          </li>
+          <li>
+            <Link to="/rules" className={`nav-item ${isActive('/rules') ? 'active' : ''}`}>
+              <ArticleIcon className="nav-icon" /> Regulamin
+            </Link>
+          </li>
           <li className="spacer"></li>
           <li>
             <div style={{ 
@@ -156,31 +182,75 @@ export default function Sidebar() {
   return (
     <nav className="sidebar" aria-label="Główne menu aplikacji">
       <ul>
-        <li><Link to="/" className={`nav-item ${isActive('/') ? 'active' : ''}`}><span className="nav-icon">🏠</span> Start</Link></li>
-        <li><Link to="/profile" className={`nav-item ${isActive('/profile') ? 'active' : ''}`}><span className="nav-icon">👤</span> Mój Profil</Link></li>
-        <li><Link to="/ranking" className={`nav-item ${isActive('/ranking') ? 'active' : ''}`}><span className="nav-icon">🏆</span> Ranking</Link></li>
-        <li><Link to="/history" className={`nav-item ${isActive('/history') ? 'active' : ''}`}><span className="nav-icon">📋</span> Historia Gier</Link></li>
+        <li>
+          <Link to="/" className={`nav-item ${isActive('/') ? 'active' : ''}`}>
+            <HomeIcon className="nav-icon" sx={{ color: '#2bf7f4' }} /> Start
+          </Link>
+        </li>
+        <li>
+          <Link to="/profile" className={`nav-item ${isActive('/profile') ? 'active' : ''}`}>
+            <PersonIcon className="nav-icon" /> Mój Profil
+          </Link>
+        </li>
+        <li>
+          <Link to="/ranking" className={`nav-item ${isActive('/ranking') ? 'active' : ''}`}>
+            <EmojiEventsIcon className="nav-icon" /> Ranking
+          </Link>
+        </li>
+        <li>
+          <Link to="/history" className={`nav-item ${isActive('/history') ? 'active' : ''}`}>
+            <HistoryIcon className="nav-icon" /> Historia Gier
+          </Link>
+        </li>
         <li className="spacer"></li>
-        <li><Link to="/shop" className={`nav-item ${isActive('/shop') ? 'active' : ''}`}><span className="nav-icon">🛒</span> Sklep</Link></li>
-        <li><Link to="/friends" className={`nav-item ${isActive('/friends') ? 'active' : ''}`}><span className="nav-icon">👥</span> Moi Znajomi</Link></li>
-        <li><Link to="/find-friends" className={`nav-item ${isActive('/find-friends') ? 'active' : ''}`}><span className="nav-icon">🔍</span> Szukaj Znajomych</Link></li>
+        <li>
+          <Link to="/shop" className={`nav-item ${isActive('/shop') ? 'active' : ''}`}>
+            <ShoppingCartIcon className="nav-icon" /> Sklep
+          </Link>
+        </li>
+        <li>
+          <Link to="/friends" className={`nav-item ${isActive('/friends') ? 'active' : ''}`}>
+            <PeopleIcon className="nav-icon" /> Moi Znajomi
+          </Link>
+        </li>
+        <li>
+          <Link to="/find-friends" className={`nav-item ${isActive('/find-friends') ? 'active' : ''}`}>
+            <SearchIcon className="nav-icon" /> Szukaj Znajomych
+          </Link>
+        </li>
         <li>
           <Link to="/chat" className={`nav-item ${isActive('/chat') ? 'active' : ''}`} style={{ position: 'relative' }}>
-            <span className="nav-icon">💬</span> Czat
+            <ChatBubbleIcon className="nav-icon" /> Czat
             {unreadCount > 0 && (
               <span className="notification-badge">{unreadCount}</span>
             )}
           </Link>
         </li>
-        <li><Link to="/top-players" className={`nav-item ${isActive('/top-players') ? 'active' : ''}`}><span className="nav-icon">👑</span> Najlepsi</Link></li>
+        <li>
+          <Link to="/top-players" className={`nav-item ${isActive('/top-players') ? 'active' : ''}`}>
+            <LeaderboardIcon className="nav-icon" /> Najlepsi
+          </Link>
+        </li>
         <li className="spacer"></li>
-        <li><Link to="/add-question" className={`nav-item add ${isActive('/add-question') ? 'active' : ''}`}><span className="nav-icon">➕</span> Dodaj Pytanie</Link></li>
-        <li><Link to="/settings" className={`nav-item ${isActive('/settings') ? 'active' : ''}`}><span className="nav-icon">⚙️</span> Ustawienia</Link></li>
+        <li>
+          <Link to="/add-question" className={`nav-item add ${isActive('/add-question') ? 'active' : ''}`}>
+            <AddIcon className="nav-icon secondary" /> Dodaj Pytanie
+          </Link>
+        </li>
+        <li>
+          <Link to="/settings" className={`nav-item ${isActive('/settings') ? 'active' : ''}`}>
+            <SettingsIcon className="nav-icon secondary" /> Ustawienia
+          </Link>
+        </li>
         
         {isAdmin && (
           <>
             <li className="spacer"></li>
-            <li><Link to="/admin" className={`nav-item admin ${isActive('/admin') ? 'active' : ''}`}><span className="nav-icon">🛡️</span> Panel Admina</Link></li>
+            <li>
+              <Link to="/admin" className={`nav-item admin ${isActive('/admin') ? 'active' : ''}`}>
+                <AdminPanelSettingsIcon className="nav-icon" /> Panel Admina
+              </Link>
+            </li>
           </>
         )}
       </ul>
