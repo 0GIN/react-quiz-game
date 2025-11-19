@@ -23,35 +23,59 @@ import {
   leaveDuelQueue,
   challengeFromQueue,
   subscribeToQueue,
+  joinRankedQueue,
+  leaveRankedQueue,
+  isInRankedQueue,
+  getRankedQueueCount,
+  subscribeToRankedMatches,
   type DuelMatch,
   type DuelQueueEntry,
 } from '@/services/duelService';
 import { supabase } from '@/lib/supabase';
 import { getDisplayAvatar } from '@/utils/avatar';
+import { useLocation } from 'react-router-dom';
 import '@/styles/ui.css';
 
 export default function DuelLobby() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'queue'>('active');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'queue' | 'ranked'>('active');
   const [activeDuels, setActiveDuels] = useState<DuelMatch[]>([]);
   const [pendingDuels, setPendingDuels] = useState<DuelMatch[]>([]);
   const [queuePlayers, setQueuePlayers] = useState<DuelQueueEntry[]>([]);
   const [inQueue, setInQueue] = useState(false);
+  const [inRankedQueue, setInRankedQueue] = useState(false);
+  const [rankedQueueCount, setRankedQueueCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [searchingRanked, setSearchingRanked] = useState(false);
+
+  // Ustaw aktywną zakładkę na podstawie location state (po powrocie z meczu ranked)
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+      // Wyczyść state aby nie był używany ponownie
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, navigate, location.pathname]);
 
   useEffect(() => {
     if (!user) return;
     loadDuels();
     loadQueue();
     checkQueueStatus();
+    checkRankedQueueStatus();
+    loadRankedQueueCount();
 
-    // Subskrybuj nowe wyzwania (INSERT)
+    // Subskrybuj nowe wyzwania (INSERT) - tylko Duel (bez master_category_id)
     const unsubscribeChallenges = subscribeToNewChallenges(user.id, (newChallenge) => {
-      console.log('🎯 Nowe wyzwanie:', newChallenge);
-      setPendingDuels(prev => [newChallenge, ...prev]);
-      // Pokaż powiadomienie
-      window.dispatchEvent(new Event('refreshUnreadCount'));
+      // Filtruj tylko mecze Duel
+      if (!newChallenge.master_category_id) {
+        console.log('🎯 Nowe wyzwanie Duel:', newChallenge);
+        setPendingDuels(prev => [newChallenge, ...prev]);
+        // Pokaż powiadomienie
+        window.dispatchEvent(new Event('refreshUnreadCount'));
+      }
     });
 
     // Subskrybuj zmiany statusu meczów (UPDATE) - np. pending -> active
@@ -90,12 +114,22 @@ export default function DuelLobby() {
       loadQueue();
     });
 
+    // Subskrybuj znalezione mecze rankingowe
+    const unsubscribeRankedMatches = subscribeToRankedMatches(user.id, (matchId) => {
+      console.log('🎮 Ranked match found:', matchId);
+      setSearchingRanked(false);
+      setInRankedQueue(false);
+      alert('Znaleziono przeciwnika! Rozpoczynamy mecz...');
+      navigate(`/duel/${matchId}`);
+    });
+
     return () => {
       unsubscribeChallenges();
       supabase.removeChannel(unsubscribeMatchUpdates);
       unsubscribeQueue();
+      unsubscribeRankedMatches();
     };
-  }, [user]);
+  }, [user, navigate]);
 
   const loadDuels = async () => {
     if (!user) return;
@@ -107,8 +141,9 @@ export default function DuelLobby() {
         getUserDuels(user.id, 'pending'),
       ]);
 
-      setActiveDuels(active);
-      setPendingDuels(pending);
+      // Filtruj tylko mecze Duel (bez master_category_id)
+      setActiveDuels(active.filter(d => !d.master_category_id));
+      setPendingDuels(pending.filter(d => !d.master_category_id));
     } catch (error) {
       console.error('Error loading duels:', error);
     } finally {
@@ -139,6 +174,29 @@ export default function DuelLobby() {
     }
   };
 
+  const checkRankedQueueStatus = async () => {
+    if (!user) return;
+
+    try {
+      const status = await isInRankedQueue(user.id);
+      setInRankedQueue(status);
+      if (status) {
+        setSearchingRanked(true);
+      }
+    } catch (error) {
+      console.error('Error checking ranked queue status:', error);
+    }
+  };
+
+  const loadRankedQueueCount = async () => {
+    try {
+      const count = await getRankedQueueCount();
+      setRankedQueueCount(count);
+    } catch (error) {
+      console.error('Error loading ranked queue count:', error);
+    }
+  };
+
   const handleJoinQueue = async () => {
     if (!user) return;
 
@@ -163,8 +221,53 @@ export default function DuelLobby() {
     }
   };
 
+  const handleJoinRankedQueue = async () => {
+    if (!user) return;
+
+    setSearchingRanked(true);
+    console.log('🎯 Joining ranked queue:', { userId: user.id, level: user.level, fp: user.flash_points });
+    
+    const result = await joinRankedQueue(user.id, user.level || 1, user.flash_points || 0);
+    console.log('🎯 Ranked queue result:', result);
+
+    if (!result.success) {
+      setSearchingRanked(false);
+      alert(result.error || 'Nie udało się dołączyć do kolejki');
+      return;
+    }
+
+    if (result.match_found && result.match_id) {
+      // Natychmiast znaleziono mecz!
+      setSearchingRanked(false);
+      alert(`Znaleziono przeciwnika: ${result.opponent_username} (Level ${result.opponent_level})!`);
+      navigate(`/duel/${result.match_id}`);
+    } else {
+      // Czekamy w kolejce
+      setInRankedQueue(true);
+      loadRankedQueueCount();
+    }
+  };
+
+  const handleLeaveRankedQueue = async () => {
+    if (!user) return;
+
+    setSearchingRanked(false);
+    const result = await leaveRankedQueue(user.id);
+    if (result.success) {
+      setInRankedQueue(false);
+      loadRankedQueueCount();
+    }
+  };
+
   const handleChallengeFromQueue = async (queueEntryId: string) => {
     if (!user) return;
+
+    // Opuść kolejkę rankingową jeśli jesteś w niej
+    if (inRankedQueue) {
+      await leaveRankedQueue(user.id);
+      setInRankedQueue(false);
+      setSearchingRanked(false);
+    }
 
     const result = await challengeFromQueue(user.id, queueEntryId);
     if (result.success) {
@@ -178,6 +281,13 @@ export default function DuelLobby() {
 
   const handleAccept = async (matchId: string) => {
     if (!user) return;
+
+    // Opuść kolejkę rankingową jeśli jesteś w niej
+    if (inRankedQueue) {
+      await leaveRankedQueue(user.id);
+      setInRankedQueue(false);
+      setSearchingRanked(false);
+    }
 
     const result = await acceptDuelChallenge(matchId, user.id);
     if (result.success) {
@@ -340,6 +450,21 @@ export default function DuelLobby() {
                 }}
               >
                 🔍 Szukaj ({queuePlayers.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('ranked')}
+                style={{
+                  padding: '12px 24px',
+                  background: 'none',
+                  border: 'none',
+                  color: activeTab === 'ranked' ? '#FFD700' : '#B0B0B0',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  borderBottom: activeTab === 'ranked' ? '2px solid #FFD700' : '2px solid transparent',
+                  marginBottom: '-2px',
+                }}
+              >
+                🏆 Ranked ({rankedQueueCount})
               </button>
             </div>
 
@@ -697,6 +822,164 @@ export default function DuelLobby() {
                         </div>
                       ))
                     )}
+                  </div>
+                </div>
+              )}
+
+              {/* Kolejka Rankingowa - Automatyczny matchmaking */}
+              {activeTab === 'ranked' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  {/* Hero Section */}
+                  <div style={{
+                    padding: '32px',
+                    background: 'linear-gradient(135deg, rgba(255,215,0,0.1) 0%, rgba(255,165,0,0.1) 100%)',
+                    border: '2px solid rgba(255,215,0,0.3)',
+                    borderRadius: '16px',
+                    textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: '64px', marginBottom: '16px' }}>🏆</div>
+                    <h2 style={{ color: '#FFD700', fontSize: '28px', marginBottom: '12px', fontWeight: 700 }}>
+                      Ranked Matchmaking
+                    </h2>
+                    <p style={{ color: '#E0E0E0', fontSize: '16px', lineHeight: 1.6, marginBottom: '8px' }}>
+                      Automatyczne dopasowanie przeciwnika o podobnym poziomie
+                    </p>
+                    <p style={{ color: '#B8B8D0', fontSize: '14px', lineHeight: 1.6 }}>
+                      System dopasowuje graczy w zakresie <strong style={{ color: '#FFD700' }}>±1 poziom</strong>
+                    </p>
+                  </div>
+
+                  {/* Status i przycisk */}
+                  <div style={{
+                    padding: '24px',
+                    background: searchingRanked 
+                      ? 'rgba(255,215,0,0.1)' 
+                      : 'rgba(255,255,255,0.02)',
+                    border: searchingRanked 
+                      ? '2px solid rgba(255,215,0,0.4)' 
+                      : '1px solid rgba(255,255,255,0.05)',
+                    borderRadius: '12px',
+                  }}>
+                    {searchingRanked ? (
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ marginBottom: '16px' }}>
+                          <div style={{
+                            width: '48px',
+                            height: '48px',
+                            margin: '0 auto',
+                            border: '4px solid rgba(255,215,0,0.3)',
+                            borderTop: '4px solid #FFD700',
+                            borderRadius: '50%',
+                            animation: 'spin 1s linear infinite',
+                          }} />
+                        </div>
+                        <h3 style={{ color: '#FFD700', fontSize: '20px', marginBottom: '8px', fontWeight: 600 }}>
+                          🔍 Szukam przeciwnika...
+                        </h3>
+                        <p style={{ color: '#B8B8D0', fontSize: '14px', marginBottom: '4px' }}>
+                          Twój poziom: <strong style={{ color: '#00E5FF' }}>{user?.level || 1}</strong>
+                        </p>
+                        <p style={{ color: '#B8B8D0', fontSize: '14px', marginBottom: '16px' }}>
+                          Szukam gracza z poziomem <strong style={{ color: '#FFD700' }}>{Math.max(1, (user?.level || 1) - 1)} - {(user?.level || 1) + 1}</strong>
+                        </p>
+                        <p style={{ color: '#888', fontSize: '13px', marginBottom: '20px' }}>
+                          Graczy w kolejce: <strong>{rankedQueueCount}</strong>
+                        </p>
+                        <button
+                          onClick={handleLeaveRankedQueue}
+                          style={{
+                            padding: '12px 32px',
+                            background: 'rgba(255,0,0,0.1)',
+                            border: '1px solid rgba(255,0,0,0.3)',
+                            borderRadius: '12px',
+                            color: '#f87171',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            fontSize: '16px',
+                          }}
+                        >
+                          Anuluj szukanie
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ marginBottom: '20px' }}>
+                          <h3 style={{ color: '#E0E0E0', fontSize: '18px', marginBottom: '12px', fontWeight: 600 }}>
+                            Jak to działa?
+                          </h3>
+                          <ul style={{ color: '#B8B8D0', fontSize: '14px', lineHeight: 1.8, paddingLeft: '24px' }}>
+                            <li>Kliknij "Szukaj meczu" aby dołączyć do kolejki</li>
+                            <li>System automatycznie dopasuje Ci przeciwnika o podobnym poziomie</li>
+                            <li>Zakres: Twój poziom <strong style={{ color: '#FFD700' }}>±1</strong> (np. Level 5 → szuka 4-6)</li>
+                            <li>Jeśli jest dostępny gracz - mecz startuje natychmiast!</li>
+                            <li>Jeśli nie ma gracza - czekasz aż ktoś dołączy</li>
+                          </ul>
+                        </div>
+
+                        <div style={{
+                          display: 'flex',
+                          gap: '16px',
+                          alignItems: 'center',
+                          padding: '16px',
+                          background: 'rgba(0,229,255,0.05)',
+                          borderRadius: '8px',
+                          marginBottom: '20px',
+                        }}>
+                          <MaterialIcon icon="info" size={32} style={{ color: '#00E5FF' }} />
+                          <div style={{ flex: 1 }}>
+                            <p style={{ color: '#E0E0E0', fontSize: '14px', marginBottom: '4px' }}>
+                              <strong>Twój poziom:</strong> {user?.level || 1}
+                            </p>
+                            <p style={{ color: '#B8B8D0', fontSize: '13px' }}>
+                              Będziesz dopasowany z graczem poziom {Math.max(1, (user?.level || 1) - 1)} - {(user?.level || 1) + 1}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div style={{ textAlign: 'center' }}>
+                          <button
+                            onClick={handleJoinRankedQueue}
+                            style={{
+                              padding: '16px 48px',
+                              background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                              border: 'none',
+                              borderRadius: '16px',
+                              color: '#0A0A1A',
+                              fontWeight: 700,
+                              fontSize: '18px',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '12px',
+                              boxShadow: '0 4px 20px rgba(255,215,0,0.3)',
+                            }}
+                          >
+                            <MaterialIcon icon="search" size={24} />
+                            Szukaj meczu
+                          </button>
+                          <p style={{ color: '#888', fontSize: '12px', marginTop: '12px' }}>
+                            Graczy w kolejce: {rankedQueueCount}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info o nagrodach */}
+                  <div style={{
+                    padding: '20px',
+                    background: 'rgba(138,43,226,0.05)',
+                    border: '1px solid rgba(138,43,226,0.2)',
+                    borderRadius: '12px',
+                  }}>
+                    <h4 style={{ color: '#8A2BE2', fontSize: '16px', marginBottom: '12px', fontWeight: 600 }}>
+                      💎 Nagrody rankingowe
+                    </h4>
+                    <p style={{ color: '#B8B8D0', fontSize: '14px', lineHeight: 1.6 }}>
+                      Mecze rankingowe stosują ten sam dynamiczny system nagród co zwykłe pojedynki:
+                      zaciąty pojedynek (+90 XP), standardowa wygrana (+150 XP), dominacja (+200 XP).
+                      Przegrana również skutkuje utratą XP (-10 do -50 XP).
+                    </p>
                   </div>
                 </div>
               )}

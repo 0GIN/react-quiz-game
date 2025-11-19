@@ -13,8 +13,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Funkcja do przeliczania levelu po dodaniu XP
-CREATE OR REPLACE FUNCTION update_user_level(p_user_id UUID, p_experience_gained INTEGER)
+-- Funkcja do przeliczania levelu po dodaniu/odjęciu XP
+CREATE OR REPLACE FUNCTION update_user_level(p_user_id UUID, p_experience_change INTEGER)
 RETURNS VOID AS $$
 DECLARE
     v_current_level INTEGER;
@@ -28,9 +28,27 @@ BEGIN
     FROM users
     WHERE id = p_user_id;
     
-    -- Dodaj zdobyte XP
-    v_remaining_xp := v_current_xp + p_experience_gained;
+    -- Dodaj/odejmij XP
+    v_remaining_xp := v_current_xp + p_experience_change;
     v_new_level := v_current_level;
+    
+    -- Jeśli XP ujemne, cofnij poziomy (ale nie niżej niż 1)
+    IF v_remaining_xp < 0 AND v_new_level > 1 THEN
+        LOOP
+            v_new_level := v_new_level - 1;
+            EXIT WHEN v_new_level <= 1; -- Minimalny poziom to 1
+            
+            v_required_xp := calculate_required_xp(v_new_level);
+            v_remaining_xp := v_remaining_xp + v_required_xp;
+            
+            EXIT WHEN v_remaining_xp >= 0;
+        END LOOP;
+        
+        -- Jeśli nadal ujemne i jesteśmy na poziomie 1, ustaw na 0
+        IF v_remaining_xp < 0 THEN
+            v_remaining_xp := 0;
+        END IF;
+    END IF;
     
     -- Sprawdź czy użytkownik awansował (może być kilka poziomów naraz)
     LOOP
@@ -115,10 +133,10 @@ BEGIN
             best_streak = GREATEST(best_streak, current_streak + 1)
         WHERE id = v_winner_id;
         
-        -- Przelicz level zwycięzcy
+        -- Przelicz level zwycięzcy (+150 XP)
         PERFORM update_user_level(v_winner_id, 150);
         
-        -- Przegrany: +0 FP, +50 XP
+        -- Przegrany: +0 FP, -30 XP (kara za przegraną)
         UPDATE users
         SET 
             total_losses = total_losses + 1,
@@ -130,8 +148,8 @@ BEGIN
             current_streak = 0
         WHERE id = v_loser_id;
         
-        -- Przelicz level przegranego
-        PERFORM update_user_level(v_loser_id, 50);
+        -- Przelicz level przegranego (-30 XP jako kara)
+        PERFORM update_user_level(v_loser_id, -30);
     ELSE
         -- Remis: +50 FP, +75 XP dla obu
         UPDATE users

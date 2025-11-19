@@ -13,6 +13,7 @@
  */
 
 import { useNavigate } from 'react-router-dom'
+import { ROUTES } from '@/constants'
 import duelLogo from '@/assets/duel_logo.png'
 import squadLogo from '@/assets/squad_logo.png'
 import blitzLogo from '@/assets/blitz_logo.png'
@@ -41,7 +42,7 @@ export default function Hero() {
             <div className="game-mode-title">Blitz</div>
             <div className="game-mode-description">3 życia i walka na czas</div>
           </div>
-          <div className="game-mode-card">
+          <div className="game-mode-card" onClick={() => navigate(ROUTES.MASTER)} style={{ cursor: 'pointer' }}>
             <img src={masterLogo} alt="" className="game-mode-icon-img" />
             <div className="game-mode-title">Master</div>
             <div className="game-mode-description">Sprawdź się w pojedynku w jednej kategorii</div>

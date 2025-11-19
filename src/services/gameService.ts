@@ -64,25 +64,81 @@ export function calculateFlashPoints(result: GameResult): number {
 }
 
 /**
- * Oblicza Experience Points
+ * Oblicza Experience Points z nowym systemem balansowania
+ * 
+ * BLITZ - Progresywny system kar i nagród:
+ * - 0-3 poprawne (utrata wszystkich żyć szybko): -50 do -20 XP
+ * - 4-7 poprawne (słaby wynik): -15 do 0 XP
+ * - 8-12 poprawne (średni wynik): 0 do +30 XP
+ * - 13-20 poprawne (dobry wynik): +40 do +100 XP
+ * - 21+ poprawne (świetny wynik): +110 do +200 XP (max cap)
+ * 
+ * DUEL/PVP - Wynik już obsługiwany przez SQL (Winner: +150 XP, Loser: +50 XP)
  */
 export function calculateExperience(result: GameResult): number {
-  let xp = result.questionsAnswered * 10; // 10 XP za każde pytanie
+  // Tryby PVP - używają własnego systemu nagród w SQL
+  if (result.gameMode !== 'blitz') {
+    // Dla duel - podstawowe XP (będzie nadpisane przez SQL, ale jako fallback)
+    let xp = result.questionsAnswered * 10;
+    xp += result.correctAnswers * 15;
+    xp += result.bestStreak * 5;
+    return Math.floor(xp * 1.5);
+  }
 
-  // Bonus za poprawne odpowiedzi
-  xp += result.correctAnswers * 15;
+  // === BLITZ - Nowy progresywny system ===
+  const correct = result.correctAnswers;
+  const answered = result.questionsAnswered;
+  const accuracy = answered > 0 ? correct / answered : 0;
+  
+  let xp = 0;
 
-  // Bonus za streak
-  xp += result.bestStreak * 5;
+  // Bazowe XP zależne od liczby poprawnych odpowiedzi
+  if (correct === 0 && answered <= 3) {
+    // Najgorszy scenariusz - utrata 3 żyć na początku
+    xp = -50;
+  } else if (correct <= 3) {
+    // Bardzo słaby wynik - kara
+    xp = -20 - (3 - correct) * 10;
+  } else if (correct <= 7) {
+    // Słaby wynik - lekka kara do 0
+    xp = -15 + (correct - 4) * 4;
+  } else if (correct <= 12) {
+    // Średni wynik - od 0 do +30
+    xp = (correct - 8) * 6;
+  } else if (correct <= 20) {
+    // Dobry wynik - +40 do +100
+    xp = 40 + (correct - 13) * 7.5;
+  } else {
+    // Świetny wynik - +110 do +200 (cap)
+    xp = 110 + Math.min((correct - 21) * 6, 90);
+  }
 
-  // Bonus za tryb gry (trudniejsze tryby = więcej XP)
-  const modeMultiplier = {
-    blitz: 1.2,
-    duel: 1.5,
-    squad: 1.3,
-    master: 1.8,
-  };
-  xp *= modeMultiplier[result.gameMode];
+  // Bonus za accuracy (tylko dla pozytywnych wyników)
+  if (xp > 0 && accuracy >= 0.8) {
+    xp += 20;
+  }
+  if (xp > 0 && accuracy >= 0.9) {
+    xp += 30;
+  }
+  if (xp > 0 && accuracy === 1.0 && answered >= 10) {
+    xp += 50; // Perfekcyjna gra
+  }
+
+  // Bonus za streak (tylko dla pozytywnych wyników)
+  if (xp > 0) {
+    xp += Math.min(result.bestStreak * 3, 30); // Max +30 ze streaka
+  }
+
+  // Bonus za przetrwanie z życiami (tylko dla pozytywnych wyników)
+  if (xp > 0 && result.livesRemaining) {
+    xp += result.livesRemaining * 10;
+  }
+
+  // Hard cap na +200 XP
+  xp = Math.min(xp, 200);
+  
+  // Zabezpieczenie przed zbyt dużą karą
+  xp = Math.max(xp, -50);
 
   return Math.floor(xp);
 }

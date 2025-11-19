@@ -29,6 +29,8 @@ export interface DuelMatch {
   accepted_at: string | null;
   completed_at: string | null;
   last_activity_at: string;
+  is_ranked?: boolean;
+  master_category_id?: number | null;
   // Relations
   player1?: {
     id: string;
@@ -146,7 +148,8 @@ export interface DuelQueueEntry {
 export async function createDuelChallenge(
   challengerId: string,
   challengedId: string,
-  message?: string
+  message?: string,
+  masterCategoryId?: number
 ): Promise<{ success: boolean; matchId?: string; error?: string }> {
   try {
     // Sprawdź czy nie ma już aktywnego pojedynku między tymi graczami
@@ -162,16 +165,28 @@ export async function createDuelChallenge(
       return { success: false, error: 'Masz już aktywny pojedynek z tym graczem' };
     }
 
-    // Utwórz pojedynek
+    // Utwórz pojedynek - dodajemy tylko zdefiniowane pola
+    const insertData: any = {
+      player1_id: challengerId,
+      player2_id: challengedId,
+      status: 'pending',
+      current_round: 0,
+    };
+
+    // Dodaj opcjonalne pola tylko jeśli są zdefiniowane
+    if (message !== undefined && message !== null && message !== '') {
+      insertData.challenge_message = message;
+    }
+    
+    if (masterCategoryId !== undefined && masterCategoryId !== null) {
+      insertData.master_category_id = masterCategoryId;
+    }
+
+    console.log('📤 Inserting duel match:', insertData);
+
     const { data, error } = await supabase
       .from('duel_matches')
-      .insert({
-        player1_id: challengerId,
-        player2_id: challengedId,
-        challenge_message: message,
-        status: 'pending',
-        current_round: 0,
-      })
+      .insert(insertData)
       .select()
       .single();
 
@@ -375,6 +390,21 @@ export async function getDuelRounds(matchId: string): Promise<DuelRound[]> {
 
     if (error) throw error;
 
+    if (data && data.length > 0) {
+      console.log('🔄 getDuelRounds - FULL ROUND DATA:');
+      data.forEach(r => {
+        console.log(`  Round ${r.round_number}:`, {
+          id: r.id,
+          has_answers_q1: !!r.answers_q1,
+          has_answers_q2: !!r.answers_q2,
+          has_answers_q3: !!r.answers_q3,
+          answers_q1: r.answers_q1,
+          answers_q2: r.answers_q2,
+          answers_q3: r.answers_q3,
+        });
+      });
+    }
+
     return data || [];
   } catch (error) {
     console.error('❌ Error fetching duel rounds:', error);
@@ -457,14 +487,22 @@ export async function selectCategoryForRound(
     const selectedRaw = shuffled.slice(0, 3);
 
     // Przekształć pytania do formatu DuelQuestion
-    const selectedQuestions: DuelQuestion[] = selectedRaw.map(q => {
+    const selectedQuestions: DuelQuestion[] = selectedRaw.map((q, index) => {
       // Losuj kolejność odpowiedzi - Fisher-Yates
       const answers = [
-        { letter: 'A' as const, text: q.correct_answer, isCorrect: true },
-        { letter: 'B' as const, text: q.wrong_answer_1, isCorrect: false },
-        { letter: 'C' as const, text: q.wrong_answer_2, isCorrect: false },
-        { letter: 'D' as const, text: q.wrong_answer_3, isCorrect: false },
+        { text: q.correct_answer, isCorrect: true },
+        { text: q.wrong_answer_1, isCorrect: false },
+        { text: q.wrong_answer_2, isCorrect: false },
+        { text: q.wrong_answer_3, isCorrect: false },
       ];
+      
+      console.log(`🎲 BEFORE shuffle Q${index + 1}:`, {
+        '0': answers[0].text.substring(0, 20) + '...',
+        '1': answers[1].text.substring(0, 20) + '...',
+        '2': answers[2].text.substring(0, 20) + '...',
+        '3': answers[3].text.substring(0, 20) + '...',
+        correct_is_at_index: answers.findIndex(a => a.isCorrect),
+      });
       
       // Fisher-Yates shuffle dla odpowiedzi
       for (let i = answers.length - 1; i > 0; i--) {
@@ -472,24 +510,41 @@ export async function selectCategoryForRound(
         [answers[i], answers[j]] = [answers[j], answers[i]];
       }
 
-      const correctLetter = answers.find(a => a.isCorrect)!.letter;
+      // Przypisz litery A, B, C, D DOPIERO PO shuffle
+      const shuffledAnswers = [
+        { letter: 'A' as const, text: answers[0].text, isCorrect: answers[0].isCorrect },
+        { letter: 'B' as const, text: answers[1].text, isCorrect: answers[1].isCorrect },
+        { letter: 'C' as const, text: answers[2].text, isCorrect: answers[2].isCorrect },
+        { letter: 'D' as const, text: answers[3].text, isCorrect: answers[3].isCorrect },
+      ];
+      
+      const correctLetter = shuffledAnswers.find(a => a.isCorrect)!.letter;
+      
+      console.log(`🎲 AFTER shuffle Q${index + 1}:`, {
+        A: shuffledAnswers[0].text.substring(0, 20) + '...',
+        B: shuffledAnswers[1].text.substring(0, 20) + '...',
+        C: shuffledAnswers[2].text.substring(0, 20) + '...',
+        D: shuffledAnswers[3].text.substring(0, 20) + '...',
+        correct_is_now: correctLetter,
+        correct_at_index: shuffledAnswers.findIndex(a => a.isCorrect),
+      });
 
       return {
         id: q.id,
         content: q.question_text,
-        answer_a: answers.find(a => a.letter === 'A')!.text,
-        answer_b: answers.find(a => a.letter === 'B')!.text,
-        answer_c: answers.find(a => a.letter === 'C')!.text,
-        answer_d: answers.find(a => a.letter === 'D')!.text,
+        answer_a: shuffledAnswers[0].text,
+        answer_b: shuffledAnswers[1].text,
+        answer_c: shuffledAnswers[2].text,
+        answer_d: shuffledAnswers[3].text,
         correct_answer: correctLetter,
         category_id: q.category_id,
         difficulty: q.difficulty_level,
         // Store the randomized answers for database
         answersJson: {
-          A: answers.find(a => a.letter === 'A')!.text,
-          B: answers.find(a => a.letter === 'B')!.text,
-          C: answers.find(a => a.letter === 'C')!.text,
-          D: answers.find(a => a.letter === 'D')!.text,
+          A: shuffledAnswers[0].text,
+          B: shuffledAnswers[1].text,
+          C: shuffledAnswers[2].text,
+          D: shuffledAnswers[3].text,
           correct: correctLetter,
         },
       };
@@ -498,6 +553,12 @@ export async function selectCategoryForRound(
     console.log('✅ Selected questions:', selectedQuestions);
 
     // Utwórz rundę z zapisanymi wylosowanymi odpowiedziami
+    console.log('💾 Inserting round with answers:', {
+      answers_q1: selectedQuestions[0].answersJson,
+      answers_q2: selectedQuestions[1].answersJson,
+      answers_q3: selectedQuestions[2].answersJson,
+    });
+    
     const { data: round, error: roundError } = await supabase
       .from('duel_rounds')
       .insert({
@@ -519,6 +580,13 @@ export async function selectCategoryForRound(
       console.error('❌ Round insert error:', roundError);
       throw roundError;
     }
+    
+    console.log('✅ Round inserted with answers:', {
+      round_id: round?.id,
+      has_answers_q1: !!round?.answers_q1,
+      has_answers_q2: !!round?.answers_q2,
+      has_answers_q3: !!round?.answers_q3,
+    });
 
     // Ustaw turę na gracza, który wybrał kategorię (odpowiada pierwszy)
     await supabase
@@ -1097,4 +1165,191 @@ export async function getRandomCategories() {
     console.error('❌ Error fetching random categories:', error);
     return [];
   }
+}
+
+// ========================================
+// RANKED MATCHMAKING
+// ========================================
+
+export interface RankedQueueEntry {
+  id: string;
+  user_id: string;
+  level: number;
+  flash_points: number;
+  message: string | null;
+  created_at: string;
+  user_data?: {
+    id: string;
+    username: string;
+    avatar_url: string;
+    level: number;
+  };
+}
+
+export interface RankedMatchResult {
+  success: boolean;
+  match_found: boolean;
+  match_id?: string;
+  opponent_id?: string;
+  opponent_username?: string;
+  opponent_level?: number;
+  opponent_avatar?: string;
+  error?: string;
+}
+
+/**
+ * Dołącz do kolejki rankingowej (automatyczny matchmaking)
+ */
+export async function joinRankedQueue(
+  userId: string,
+  level: number,
+  flashPoints: number,
+  message?: string,
+  masterCategoryId?: number
+): Promise<RankedMatchResult> {
+  try {
+    console.log('🎯 Joining ranked queue:', { userId, level, flashPoints, message, masterCategoryId });
+
+    const { data, error } = await supabase.rpc('join_ranked_queue', {
+      p_user_id: userId,
+      p_level: level,
+      p_flash_points: flashPoints,
+      p_master_category_id: masterCategoryId || null,
+    });
+
+    if (error) {
+      console.error('❌ Error joining ranked queue:', error);
+      return { success: false, match_found: false, error: error.message };
+    }
+
+    const result = data?.[0];
+    console.log('✅ Ranked queue result:', result);
+
+    if (!result?.success) {
+      return { success: false, match_found: false, error: result?.error || 'Unknown error' };
+    }
+
+    if (result.match_found) {
+      // Natychmiast znaleziono mecz!
+      return {
+        success: true,
+        match_found: true,
+        match_id: result.match_id,
+        opponent_id: result.opponent_id,
+        opponent_username: result.opponent_username,
+        opponent_level: result.opponent_level,
+        opponent_avatar: result.opponent_avatar,
+      };
+    } else {
+      // Czekamy w kolejce
+      return { success: true, match_found: false };
+    }
+  } catch (error: any) {
+    console.error('❌ Exception joining ranked queue:', error);
+    return { success: false, match_found: false, error: error.message };
+  }
+}
+
+/**
+ * Opuść kolejkę rankingową
+ */
+export async function leaveRankedQueue(userId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { data, error } = await supabase.rpc('leave_ranked_queue', {
+      p_user_id: userId,
+    });
+
+    if (error) {
+      console.error('❌ Error leaving ranked queue:', error);
+      return { success: false, error: error.message };
+    }
+
+    console.log('✅ Left ranked queue');
+    return { success: true };
+  } catch (error: any) {
+    console.error('❌ Exception leaving ranked queue:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Sprawdź czy użytkownik jest w kolejce rankingowej
+ */
+export async function isInRankedQueue(userId: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from('ranked_queue')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return !!data;
+  } catch (error) {
+    console.error('❌ Error checking ranked queue status:', error);
+    return false;
+  }
+}
+
+/**
+ * Pobierz liczbę graczy w kolejce rankingowej
+ */
+export async function getRankedQueueCount(): Promise<number> {
+  try {
+    const { count, error } = await supabase
+      .from('ranked_queue')
+      .select('*', { count: 'exact', head: true });
+
+    if (error) throw error;
+    return count || 0;
+  } catch (error) {
+    console.error('❌ Error getting ranked queue count:', error);
+    return 0;
+  }
+}
+
+/**
+ * Subskrybuj zmiany w kolejce rankingowej (dla powiadomień o znalezionym meczu)
+ */
+export function subscribeToRankedMatches(userId: string, onMatchFound: (matchId: string) => void) {
+  console.log('📡 Subscribing to ranked matches for user:', userId);
+
+  const channel = supabase
+    .channel(`ranked-matches:${userId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'duel_matches',
+        filter: `player1_id=eq.${userId}`,
+      },
+      (payload: any) => {
+        console.log('🎮 New ranked match (as player1):', payload.new);
+        if (payload.new.is_ranked) {
+          onMatchFound(payload.new.id);
+        }
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'duel_matches',
+        filter: `player2_id=eq.${userId}`,
+      },
+      (payload: any) => {
+        console.log('🎮 New ranked match (as player2):', payload.new);
+        if (payload.new.is_ranked) {
+          onMatchFound(payload.new.id);
+        }
+      }
+    )
+    .subscribe();
+
+  return () => {
+    console.log('🔌 Unsubscribing from ranked matches');
+    supabase.removeChannel(channel);
+  };
 }

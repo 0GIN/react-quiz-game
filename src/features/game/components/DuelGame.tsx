@@ -189,17 +189,53 @@ export default function DuelGame() {
     console.log('🎯 Current round:', currentRound);
 
     if (!currentRound) {
-      // Brak rundy - trzeba wybrać kategorię
-      // Sprawdź kto wybierał w poprzedniej rundzie
+      // Brak rundy - trzeba wybrać kategorię (lub w Master mode - auto-wybór)
+      
+      // Master mode: automatycznie wybierz kategorię
+      if (duelData.master_category_id) {
+        console.log('🎯 Master mode - auto-selecting category:', duelData.master_category_id);
+        
+        // Sprawdź kto wybiera
+        const previousRound = currentRounds.find(r => r.round_number === currentRoundNumber - 1);
+        let isMyTurnToChoose: boolean;
+        if (previousRound) {
+          const previousChooser = previousRound.category_chooser_id;
+          isMyTurnToChoose = previousChooser !== user.id;
+        } else {
+          isMyTurnToChoose = isPlayer1;
+        }
+        
+        if (isMyTurnToChoose) {
+          // Auto-wybierz master kategorię
+          setPhase('loading');
+          const result = await selectCategoryForRound(
+            matchId,
+            currentRoundNumber,
+            duelData.master_category_id,
+            user.id
+          );
+          
+          if (result.success) {
+            console.log('✅ Master category auto-selected');
+            await determinePhase(duelData, await getDuelRounds(matchId));
+          } else {
+            console.error('❌ Failed to select master category:', result.error);
+            setPhase('waiting_opponent');
+          }
+        } else {
+          setPhase('waiting_opponent');
+        }
+        return;
+      }
+      
+      // Regular Duel: pokaz ekran wyboru kategorii
       const previousRound = currentRounds.find(r => r.round_number === currentRoundNumber - 1);
       
       let isMyTurnToChoose: boolean;
       if (previousRound) {
-        // Przeciwnik poprzedniego wybierającego
         const previousChooser = previousRound.category_chooser_id;
         isMyTurnToChoose = previousChooser !== user.id;
       } else {
-        // Pierwsza runda - zawsze Gracz 1
         isMyTurnToChoose = isPlayer1;
       }
       
@@ -260,6 +296,13 @@ export default function DuelGame() {
   const loadRoundQuestions = async (round: DuelRound) => {
     try {
       // Sprawdź czy runda ma zapisane wylosowane odpowiedzi
+      console.log('🔍 Checking round answers:', {
+        answers_q1: round.answers_q1,
+        answers_q2: round.answers_q2,
+        answers_q3: round.answers_q3,
+        hasAll: !!(round.answers_q1 && round.answers_q2 && round.answers_q3)
+      });
+      
       if (round.answers_q1 && round.answers_q2 && round.answers_q3) {
         console.log('✅ Using stored randomized answers');
         // Użyj zapisanych odpowiedzi
@@ -1374,88 +1417,211 @@ export default function DuelGame() {
             )}
 
             {/* Wynik końcowy */}
-            {phase === 'final_result' && (
-              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                {duel.winner_id === user?.id ? (
-                  <>
-                    <MaterialIcon icon="emoji_events" size={120} style={{ color: '#fbbf24', marginBottom: '24px' }} />
-                    <h1 style={{ fontSize: '36px', color: '#fbbf24', marginBottom: '16px' }}>
-                      🎉 ZWYCIĘSTWO! 🎉
-                    </h1>
-                    <p style={{ color: '#B0B0B0', fontSize: '18px', marginBottom: '32px' }}>
-                      +100 FlashPoints
-                    </p>
-                  </>
-                ) : duel.winner_id === null ? (
-                  <>
-                    <MaterialIcon icon="handshake" size={120} style={{ color: '#fbbf24', marginBottom: '24px' }} />
-                    <h1 style={{ fontSize: '36px', color: '#fbbf24', marginBottom: '16px' }}>
-                      REMIS!
-                    </h1>
-                    <p style={{ color: '#B0B0B0', fontSize: '18px', marginBottom: '32px' }}>
-                      +50 FlashPoints
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <MaterialIcon icon="sentiment_dissatisfied" size={120} style={{ color: '#888', marginBottom: '24px' }} />
-                    <h1 style={{ fontSize: '36px', color: '#B0B0B0', marginBottom: '16px' }}>
-                      Porażka
-                    </h1>
-                    <p style={{ color: '#B0B0B0', fontSize: '18px', marginBottom: '32px' }}>
-                      Następnym razem będzie lepiej!
-                    </p>
-                  </>
-                )}
+            {phase === 'final_result' && (() => {
+              const scoreDiff = Math.abs(myScore - opponentScore);
+              const isWinner = duel.winner_id === user?.id;
+              const isDraw = duel.winner_id === null;
+              
+              // Oblicz nagrody na podstawie różnicy w wyniku
+              let winnerFP = 100, winnerXP = 150;
+              let loserFP = 0, loserXP = -30;
+              let rewardType = 'standard';
+              
+              if (!isDraw) {
+                if (scoreDiff <= 2) {
+                  // Blisko remisu
+                  winnerFP = 70; winnerXP = 90;
+                  loserFP = 30; loserXP = -10;
+                  rewardType = 'close';
+                } else if (scoreDiff <= 5) {
+                  // Standardowa wygrana
+                  winnerFP = 100; winnerXP = 150;
+                  loserFP = 0; loserXP = -30;
+                  rewardType = 'standard';
+                } else {
+                  // Dominacja
+                  winnerFP = 130; winnerXP = 200;
+                  loserFP = 0; loserXP = -50;
+                  rewardType = 'domination';
+                }
+              }
+              
+              const myFP = isDraw ? 50 : (isWinner ? winnerFP : loserFP);
+              const myXP = isDraw ? 75 : (isWinner ? winnerXP : loserXP);
+              
+              return (
+                <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                  {isWinner ? (
+                    <>
+                      <MaterialIcon icon="emoji_events" size={120} style={{ color: '#fbbf24', marginBottom: '24px' }} />
+                      <h1 style={{ fontSize: '36px', color: '#fbbf24', marginBottom: '16px' }}>
+                        🎉 ZWYCIĘSTWO! 🎉
+                      </h1>
+                      {rewardType === 'close' && (
+                        <p style={{ color: '#eab308', fontSize: '14px', marginBottom: '12px', fontWeight: 600 }}>
+                          ⚔️ Zaciąty pojedynek!
+                        </p>
+                      )}
+                      {rewardType === 'domination' && (
+                        <p style={{ color: '#00E5FF', fontSize: '14px', marginBottom: '12px', fontWeight: 600 }}>
+                          💪 DOMINACJA! Dodatkowe nagrody!
+                        </p>
+                      )}
+                    </>
+                  ) : isDraw ? (
+                    <>
+                      <MaterialIcon icon="handshake" size={120} style={{ color: '#fbbf24', marginBottom: '24px' }} />
+                      <h1 style={{ fontSize: '36px', color: '#fbbf24', marginBottom: '16px' }}>
+                        REMIS!
+                      </h1>
+                      <p style={{ color: '#B8B8D0', fontSize: '14px', marginBottom: '12px' }}>
+                        Równy poziom umiejętności
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <MaterialIcon icon="sentiment_dissatisfied" size={120} style={{ color: '#888', marginBottom: '24px' }} />
+                      <h1 style={{ fontSize: '36px', color: '#B0B0B0', marginBottom: '16px' }}>
+                        Porażka
+                      </h1>
+                      {rewardType === 'close' && (
+                        <p style={{ color: '#eab308', fontSize: '14px', marginBottom: '12px' }}>
+                          Byłeś bardzo blisko! Lekka kara.
+                        </p>
+                      )}
+                      {rewardType === 'domination' && (
+                        <p style={{ color: '#ef4444', fontSize: '14px', marginBottom: '12px', fontWeight: 600 }}>
+                          Przeciwnik zdominował grę. Większa kara XP.
+                        </p>
+                      )}
+                    </>
+                  )}
 
-                <div style={{
-                  padding: '32px',
-                  background: 'rgba(255,255,255,0.02)',
-                  borderRadius: '16px',
-                  marginBottom: '32px',
-                }}>
-                  <div style={{
+                  {/* Nagrody */}
+                  <div style={{ 
+                    marginBottom: '32px',
                     display: 'flex',
-                    justifyContent: 'space-around',
-                    alignItems: 'center',
+                    gap: '16px',
+                    justifyContent: 'center',
+                    flexWrap: 'wrap'
                   }}>
-                    <div>
-                      <div style={{ color: '#B0B0B0', fontSize: '14px', marginBottom: '8px' }}>
-                        {user?.username}
+                    <div style={{
+                      padding: '16px 24px',
+                      background: 'rgba(255,215,0,0.1)',
+                      borderRadius: '8px',
+                      border: '2px solid rgba(255,215,0,0.3)',
+                      minWidth: '140px'
+                    }}>
+                      <div style={{ fontSize: '24px', marginBottom: '4px' }}>⚡</div>
+                      <div style={{ 
+                        fontSize: '24px', 
+                        fontWeight: 700, 
+                        color: myFP > 0 ? '#FFD700' : '#888',
+                        marginBottom: '4px'
+                      }}>
+                        {myFP > 0 ? '+' : ''}{myFP}
                       </div>
-                      <div style={{ fontSize: '48px', fontWeight: 700, color: '#00E5FF' }}>
-                        {myScore}
-                      </div>
+                      <div style={{ fontSize: '12px', color: '#B8B8D0' }}>FlashPoints</div>
                     </div>
-                    <div style={{ fontSize: '36px', color: '#666' }}>:</div>
-                    <div>
-                      <div style={{ color: '#B0B0B0', fontSize: '14px', marginBottom: '8px' }}>
-                        {opponent?.username}
+                    
+                    <div style={{
+                      padding: '16px 24px',
+                      background: myXP >= 0 
+                        ? 'rgba(138,43,226,0.1)' 
+                        : 'rgba(239,68,68,0.1)',
+                      borderRadius: '8px',
+                      border: myXP >= 0 
+                        ? '2px solid rgba(138,43,226,0.3)' 
+                        : '2px solid rgba(239,68,68,0.3)',
+                      minWidth: '140px'
+                    }}>
+                      <div style={{ fontSize: '24px', marginBottom: '4px' }}>
+                        {myXP >= 0 ? '⭐' : '⚠️'}
                       </div>
-                      <div style={{ fontSize: '48px', fontWeight: 700, color: '#f87171' }}>
-                        {opponentScore}
+                      <div style={{ 
+                        fontSize: '24px', 
+                        fontWeight: 700, 
+                        color: myXP >= 0 ? '#8A2BE2' : '#ef4444',
+                        marginBottom: '4px'
+                      }}>
+                        {myXP > 0 ? '+' : ''}{myXP}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#B8B8D0' }}>Experience</div>
+                      {myXP < 0 && (
+                        <div style={{ 
+                          fontSize: '10px', 
+                          color: '#ef4444', 
+                          marginTop: '4px',
+                          fontWeight: 600
+                        }}>
+                          {rewardType === 'close' ? 'Lekka kara' : 'KARA!'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{
+                    padding: '32px',
+                    background: 'rgba(255,255,255,0.02)',
+                    borderRadius: '16px',
+                    marginBottom: '32px',
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-around',
+                      alignItems: 'center',
+                    }}>
+                      <div>
+                        <div style={{ color: '#B0B0B0', fontSize: '14px', marginBottom: '8px' }}>
+                          {user?.username}
+                        </div>
+                        <div style={{ fontSize: '48px', fontWeight: 700, color: '#00E5FF' }}>
+                          {myScore}
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '36px', color: '#666' }}>:</div>
+                      <div>
+                        <div style={{ color: '#B0B0B0', fontSize: '14px', marginBottom: '8px' }}>
+                          {opponent?.username}
+                        </div>
+                        <div style={{ fontSize: '48px', fontWeight: 700, color: '#f87171' }}>
+                          {opponentScore}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <button
-                  onClick={() => navigate('/duel')}
-                  style={{
-                    padding: '16px 32px',
-                    background: 'linear-gradient(135deg, #00E5FF 0%, #00B8D4 100%)',
-                    border: 'none',
-                    borderRadius: '12px',
-                    color: '#0A0A1A',
-                    fontWeight: 600,
-                    fontSize: '16px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Powrót do lobby
-                </button>
-              </div>
-            )}
+                  <button
+                    onClick={() => {
+                      // Jeśli mecz był Master, wróć do Master lobby
+                      if (duel?.master_category_id) {
+                        navigate('/master', { state: { activeTab: 'ranked' } });
+                      } else if (duel?.is_ranked) {
+                        // Zwykły ranked - wróć do Duel z zakładką ranked
+                        navigate('/duel', { state: { activeTab: 'ranked' } });
+                      } else {
+                        // Zwykły Duel
+                        navigate('/duel');
+                      }
+                    }}
+                    style={{
+                      padding: '16px 32px',
+                      background: (duel?.is_ranked || duel?.master_category_id)
+                        ? 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)'
+                        : 'linear-gradient(135deg, #00E5FF 0%, #00B8D4 100%)',
+                      border: 'none',
+                      borderRadius: '12px',
+                      color: '#0A0A1A',
+                      fontWeight: 600,
+                      fontSize: '16px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Powrót do lobby
+                  </button>
+                </div>
+              );
+            })()}
           </div>
         </Card>
       </div>

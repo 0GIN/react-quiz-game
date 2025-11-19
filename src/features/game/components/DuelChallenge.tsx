@@ -5,38 +5,50 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@features/auth';
 import { Card, MaterialIcon, Spinner } from '@shared/ui';
 import { getFriends, type Friend } from '@/services/friendService';
 import { createDuelChallenge } from '@/services/duelService';
+import { getCategories } from '@/services/questionService';
 import { getDisplayAvatar } from '@/utils/avatar';
+import type { Category } from '@/types';
 import '@/styles/ui.css';
 
 export default function DuelChallenge() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isMasterMode = location.state?.isMaster || false; // Określamy czy to Master czy Duel
+  const preselectedFriendId = location.state?.preselectedFriendId; // Preselekcja z listy znajomych
+  
   const [friends, setFriends] = useState<Friend[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
+  const [selectedFriendId, setSelectedFriendId] = useState<string | null>(preselectedFriendId || null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [message, setMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (user) {
-      loadFriends();
+      loadData();
     }
   }, [user]);
 
-  const loadFriends = async () => {
+  const loadData = async () => {
     if (!user) return;
 
     try {
-      const friendsList = await getFriends(user.id);
+      const [friendsList, categoriesList] = await Promise.all([
+        getFriends(user.id),
+        isMasterMode ? getCategories() : Promise.resolve([]),
+      ]);
       setFriends(friendsList);
+      setCategories(categoriesList);
     } catch (error) {
-      console.error('Error loading friends:', error);
+      console.error('Error loading data:', error);
     } finally {
       setLoading(false);
     }
@@ -44,21 +56,44 @@ export default function DuelChallenge() {
 
   const handleSendChallenge = async () => {
     if (!user || !selectedFriendId) return;
+    
+    // Dla Master Mode wymagamy wyboru kategorii
+    if (isMasterMode && !selectedCategoryId) {
+      alert('Wybierz kategorię dla pojedynku Master');
+      return;
+    }
 
     const selectedFriend = friends.find(f => f.friend_id === selectedFriendId);
-    if (!selectedFriend) return;
+    if (!selectedFriend) {
+      alert('Nie znaleziono wybranego znajomego');
+      return;
+    }
+
+    // Walidacja: nie można wysłać wyzwania do samego siebie
+    if (selectedFriend.friend_id === user.id) {
+      alert('Nie możesz wysłać wyzwania do samego siebie!');
+      return;
+    }
 
     setSending(true);
     try {
+      console.log('🎯 Sending challenge:', {
+        from: user.id,
+        to: selectedFriend.friend_id,
+        isMaster: isMasterMode,
+        category: selectedCategoryId,
+      });
+
       const result = await createDuelChallenge(
         user.id,
         selectedFriend.friend_id,
-        message || undefined
+        message || undefined,
+        isMasterMode ? selectedCategoryId : undefined
       );
 
       if (result.success) {
-        // Wróć do lobby
-        navigate('/duel');
+        // Wróć do odpowiedniego lobby
+        navigate(isMasterMode ? '/master' : '/duel');
       } else {
         alert(result.error || 'Nie udało się wysłać wyzwania');
       }
@@ -97,7 +132,7 @@ export default function DuelChallenge() {
             {/* Header */}
             <div style={{ marginBottom: '24px' }}>
               <button
-                onClick={() => navigate('/duel')}
+                onClick={() => navigate(isMasterMode ? '/master' : '/duel')}
                 style={{
                   padding: '8px 16px',
                   background: 'rgba(255,255,255,0.05)',
@@ -115,11 +150,13 @@ export default function DuelChallenge() {
                 Powrót
               </button>
 
-              <h1 style={{ fontSize: '28px', color: '#E0E0E0', marginBottom: '8px' }}>
-                ⚔️ Wyślij Wyzwanie
+              <h1 style={{ fontSize: '28px', color: isMasterMode ? '#FFD700' : '#E0E0E0', marginBottom: '8px' }}>
+                {isMasterMode ? '👑 Wyślij Wyzwanie Master' : '⚔️ Wyślij Wyzwanie'}
               </h1>
               <p style={{ color: '#B0B0B0', fontSize: '14px' }}>
-                Wybierz znajomego i rzuć mu wyzwanie do pojedynku!
+                {isMasterMode 
+                  ? 'Wybierz kategorię i znajomego do pojedynku Master!' 
+                  : 'Wybierz znajomego i rzuć mu wyzwanie do pojedynku!'}
               </p>
             </div>
 
@@ -146,8 +183,71 @@ export default function DuelChallenge() {
               </div>
             ) : (
               <div>
+                {/* Wybór kategorii (tylko dla Master) */}
+                {isMasterMode && (
+                  <div style={{ marginBottom: '24px' }}>
+                    <h3 style={{ color: '#FFD700', fontSize: '16px', fontWeight: 600, marginBottom: '12px' }}>
+                      1️⃣ Wybierz kategorię
+                    </h3>
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                      gap: '12px',
+                    }}>
+                      {categories.map(category => (
+                        <div
+                          key={category.id}
+                          onClick={() => setSelectedCategoryId(category.id)}
+                          style={{
+                            padding: '16px',
+                            background: selectedCategoryId === category.id
+                              ? 'rgba(255,215,0,0.15)'
+                              : 'rgba(255,255,255,0.03)',
+                            border: selectedCategoryId === category.id
+                              ? '2px solid rgba(255,215,0,0.5)'
+                              : '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                            textAlign: 'center',
+                            transition: 'all 0.2s',
+                          }}
+                          onMouseEnter={(e) => {
+                            if (selectedCategoryId !== category.id) {
+                              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (selectedCategoryId !== category.id) {
+                              e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                            }
+                          }}
+                        >
+                          <div style={{ fontSize: '32px', marginBottom: '8px' }}>
+                            {category.icon_emoji}
+                          </div>
+                          <div style={{ 
+                            color: selectedCategoryId === category.id ? '#FFD700' : '#E0E0E0', 
+                            fontSize: '13px',
+                            fontWeight: 600,
+                          }}>
+                            {category.name}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Wyszukiwarka */}
                 <div style={{ marginBottom: '24px' }}>
+                  <h3 style={{ 
+                    color: isMasterMode ? '#FFD700' : '#00E5FF', 
+                    fontSize: '16px', 
+                    fontWeight: 600, 
+                    marginBottom: '12px' 
+                  }}>
+                    {isMasterMode ? '2️⃣ Wybierz przeciwnika' : 'Wybierz przeciwnika'}
+                  </h3>
                   <div style={{ position: 'relative' }}>
                     <MaterialIcon 
                       icon="search" 
@@ -301,17 +401,19 @@ export default function DuelChallenge() {
                   </button>
                   <button
                     onClick={handleSendChallenge}
-                    disabled={!selectedFriendId || sending}
+                    disabled={!selectedFriendId || (isMasterMode && !selectedCategoryId) || sending}
                     style={{
                       padding: '12px 24px',
-                      background: selectedFriendId && !sending
-                        ? 'linear-gradient(135deg, #00E5FF 0%, #00B8D4 100%)'
+                      background: selectedFriendId && (!isMasterMode || selectedCategoryId) && !sending
+                        ? isMasterMode 
+                          ? 'linear-gradient(135deg, #FFD700 0%, #FFA000 100%)'
+                          : 'linear-gradient(135deg, #00E5FF 0%, #00B8D4 100%)'
                         : 'rgba(255,255,255,0.1)',
                       border: 'none',
                       borderRadius: '12px',
-                      color: selectedFriendId && !sending ? '#0A0A1A' : '#666',
+                      color: selectedFriendId && (!isMasterMode || selectedCategoryId) && !sending ? '#0A0A1A' : '#666',
                       fontWeight: 600,
-                      cursor: selectedFriendId && !sending ? 'pointer' : 'not-allowed',
+                      cursor: selectedFriendId && (!isMasterMode || selectedCategoryId) && !sending ? 'pointer' : 'not-allowed',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '8px',

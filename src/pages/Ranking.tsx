@@ -16,10 +16,12 @@ interface RankedPlayer {
   total_losses: number;
   current_streak: number;
   best_streak: number;
+  originalRank?: number; // Oryginalny ranking przed filtrowaniem
 }
 
 type SortField = 'flash_points' | 'level' | 'total_wins' | 'total_games_played';
 type SortOrder = 'desc' | 'asc';
+type ViewMode = 'table' | 'podium';
 
 export default function Ranking() {
   const { user } = useAuth();
@@ -30,6 +32,9 @@ export default function Ranking() {
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [minLevel, setMinLevel] = useState<number>(0);
+  const [minGames, setMinGames] = useState<number>(0);
   const playersPerPage = 20;
 
   useEffect(() => {
@@ -45,7 +50,14 @@ export default function Ranking() {
         .order('flash_points', { ascending: false });
 
       if (error) throw error;
-      setPlayers(data || []);
+      
+      // Przypisz oryginalny ranking na podstawie flash_points
+      const playersWithRank = (data || []).map((player, index) => ({
+        ...player,
+        originalRank: index + 1
+      }));
+      
+      setPlayers(playersWithRank);
     } catch (error) {
       console.error('Error fetching players:', error);
     } finally {
@@ -64,6 +76,16 @@ export default function Ranking() {
 
   const getSortedPlayers = () => {
     let filtered = players;
+
+    // Filtrowanie po minimalnym poziomie
+    if (minLevel > 0) {
+      filtered = filtered.filter(player => player.level >= minLevel);
+    }
+
+    // Filtrowanie po minimalnej liczbie gier
+    if (minGames > 0) {
+      filtered = filtered.filter(player => player.total_games_played >= minGames);
+    }
 
     // Filtrowanie po wyszukiwanej frazie
     if (searchQuery.trim()) {
@@ -105,7 +127,56 @@ export default function Ranking() {
   return (
     <main className="main" role="main">
       <Card title="🏆 Ranking Globalny" className="ranking-page">
-        {/* Search & Stats */}
+        {/* View Mode Toggle */}
+        <div style={{ 
+          display: 'flex', 
+          gap: '12px', 
+          marginBottom: '24px',
+          justifyContent: 'center'
+        }}>
+          <button
+            onClick={() => setViewMode('table')}
+            style={{
+              padding: '12px 24px',
+              background: viewMode === 'table' 
+                ? 'linear-gradient(135deg, #00E5FF 0%, #8A2BE2 100%)'
+                : 'rgba(18, 18, 30, 0.6)',
+              border: viewMode === 'table' 
+                ? '2px solid #00E5FF'
+                : '2px solid rgba(0,229,255,0.3)',
+              borderRadius: '8px',
+              color: '#E0E0E0',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.3s'
+            }}
+          >
+            📊 Tabela
+          </button>
+          <button
+            onClick={() => setViewMode('podium')}
+            style={{
+              padding: '12px 24px',
+              background: viewMode === 'podium' 
+                ? 'linear-gradient(135deg, #00E5FF 0%, #8A2BE2 100%)'
+                : 'rgba(18, 18, 30, 0.6)',
+              border: viewMode === 'podium' 
+                ? '2px solid #00E5FF'
+                : '2px solid rgba(0,229,255,0.3)',
+              borderRadius: '8px',
+              color: '#E0E0E0',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.3s'
+            }}
+          >
+            🏆 Podium
+          </button>
+        </div>
+
+        {/* Search & Filters */}
         <div style={{ marginBottom: '24px' }}>
           <div style={{ 
             display: 'flex', 
@@ -152,6 +223,94 @@ export default function Ranking() {
             )}
           </div>
 
+          {/* Advanced Filters */}
+          <div style={{ 
+            display: 'flex', 
+            gap: '12px', 
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            marginBottom: '16px',
+            padding: '16px',
+            background: 'rgba(18, 18, 30, 0.4)',
+            borderRadius: '8px',
+            border: '1px solid rgba(0,229,255,0.2)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label style={{ fontSize: '13px', color: '#B8B8D0', whiteSpace: 'nowrap' }}>
+                Min. poziom:
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={minLevel || ''}
+                onChange={(e) => {
+                  setMinLevel(parseInt(e.target.value) || 0);
+                  setCurrentPage(1);
+                }}
+                placeholder="0"
+                style={{
+                  width: '80px',
+                  padding: '8px 12px',
+                  background: 'rgba(18, 18, 30, 0.6)',
+                  border: '2px solid rgba(0,229,255,0.3)',
+                  borderRadius: '6px',
+                  color: '#E0E0E0',
+                  fontSize: '13px',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label style={{ fontSize: '13px', color: '#B8B8D0', whiteSpace: 'nowrap' }}>
+                Min. gier:
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={minGames || ''}
+                onChange={(e) => {
+                  setMinGames(parseInt(e.target.value) || 0);
+                  setCurrentPage(1);
+                }}
+                placeholder="0"
+                style={{
+                  width: '80px',
+                  padding: '8px 12px',
+                  background: 'rgba(18, 18, 30, 0.6)',
+                  border: '2px solid rgba(0,229,255,0.3)',
+                  borderRadius: '6px',
+                  color: '#E0E0E0',
+                  fontSize: '13px',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setMinLevel(0);
+                setMinGames(0);
+                setCurrentPage(1);
+              }}
+              style={{
+                padding: '8px 16px',
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '2px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: '6px',
+                color: '#ef4444',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.3s',
+                marginLeft: 'auto'
+              }}
+            >
+              🗑️ Wyczyść
+            </button>
+          </div>
+
           <div style={{ 
             display: 'flex', 
             gap: '12px', 
@@ -175,9 +334,9 @@ export default function Ranking() {
         ) : sortedPlayers.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: '#B8B8D0' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</div>
-            <div>Nie znaleziono graczy pasujących do "{searchQuery}"</div>
+            <div>Nie znaleziono graczy pasujących do wybranych filtrów</div>
           </div>
-        ) : (
+        ) : viewMode === 'table' ? (
           <>
             <div className="ranking-table">
               <div className="ranking-header">
@@ -214,7 +373,10 @@ export default function Ranking() {
               </div>
 
               {paginatedPlayers.map((player, index) => {
-                const globalRank = startIndex + index + 1;
+                // Użyj oryginalnego rankingu jeśli jest wyszukiwanie, w przeciwnym razie użyj aktualnej pozycji
+                const displayRank = (searchQuery.trim() || minLevel > 0 || minGames > 0) 
+                  ? player.originalRank 
+                  : startIndex + index + 1;
                 const isCurrentUser = user?.id === player.id;
                 const winRate = calculateWinRate(player.total_wins, player.total_losses);
 
@@ -236,8 +398,8 @@ export default function Ranking() {
                     }}
                   >
                     <div className="rank-col">
-                      <span className={`rank-badge ${globalRank <= 3 ? 'top-3' : ''}`}>
-                        {globalRank === 1 ? '🥇' : globalRank === 2 ? '🥈' : globalRank === 3 ? '🥉' : globalRank}
+                      <span className={`rank-badge ${(displayRank ?? 0) <= 3 ? 'top-3' : ''}`}>
+                        {displayRank === 1 ? '🥇' : displayRank === 2 ? '🥈' : displayRank === 3 ? '🥉' : displayRank}
                       </span>
                     </div>
                     <div className="player-col">
@@ -388,6 +550,271 @@ export default function Ranking() {
               </div>
             )}
           </>
+        ) : null}
+
+        {/* Podium View */}
+        {!loading && viewMode === 'podium' && sortedPlayers.length >= 3 && (
+          <div style={{ marginTop: '24px' }}>
+            <h2 style={{ textAlign: 'center', marginBottom: '32px', color: '#00E5FF' }}>
+              🏆 Hall of Fame - TOP 3
+            </h2>
+            
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'flex-end',
+              gap: '24px',
+              marginBottom: '48px',
+              flexWrap: 'wrap'
+            }}>
+              {/* 2nd Place */}
+              {sortedPlayers[1] && (
+                <div style={{
+                  textAlign: 'center',
+                  minWidth: '200px',
+                  cursor: 'pointer'
+                }} onClick={() => navigate(`/profile/${sortedPlayers[1].id}`)}>
+                  <div style={{
+                    fontSize: '48px',
+                    marginBottom: '12px'
+                  }}>🥈</div>
+                  <div style={{
+                    fontSize: '20px',
+                    fontWeight: 700,
+                    color: '#C0C0C0',
+                    marginBottom: '8px'
+                  }}>{sortedPlayers[1].username}</div>
+                  <div style={{
+                    fontSize: '14px',
+                    color: '#B8B8D0',
+                    marginBottom: '12px'
+                  }}>Level {sortedPlayers[1].level}</div>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    color: '#00E5FF',
+                    marginBottom: '16px'
+                  }}>
+                    <img src={flashPoint} alt="" style={{ width: '20px', height: '20px' }} />
+                    {sortedPlayers[1].flash_points.toLocaleString()}
+                  </div>
+                  <div style={{
+                    height: '120px',
+                    background: 'linear-gradient(135deg, rgba(192,192,192,0.2) 0%, rgba(169,169,169,0.2) 100%)',
+                    border: '2px solid #C0C0C0',
+                    borderRadius: '8px 8px 0 0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '36px',
+                    fontWeight: 800,
+                    color: '#C0C0C0'
+                  }}>2</div>
+                </div>
+              )}
+
+              {/* 1st Place */}
+              {sortedPlayers[0] && (
+                <div style={{
+                  textAlign: 'center',
+                  minWidth: '220px',
+                  cursor: 'pointer',
+                  position: 'relative'
+                }} onClick={() => navigate(`/profile/${sortedPlayers[0].id}`)}>
+                  <div style={{
+                    fontSize: '32px',
+                    marginBottom: '8px'
+                  }}>👑</div>
+                  <div style={{
+                    fontSize: '56px',
+                    marginBottom: '12px'
+                  }}>🏆</div>
+                  <div style={{
+                    fontSize: '24px',
+                    fontWeight: 800,
+                    color: '#FFD700',
+                    marginBottom: '8px'
+                  }}>{sortedPlayers[0].username}</div>
+                  <div style={{
+                    fontSize: '16px',
+                    color: '#B8B8D0',
+                    marginBottom: '12px'
+                  }}>Level {sortedPlayers[0].level}</div>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    fontSize: '20px',
+                    fontWeight: 700,
+                    color: '#00E5FF',
+                    marginBottom: '16px'
+                  }}>
+                    <img src={flashPoint} alt="" style={{ width: '24px', height: '24px' }} />
+                    {sortedPlayers[0].flash_points.toLocaleString()}
+                  </div>
+                  <div style={{
+                    height: '180px',
+                    background: 'linear-gradient(135deg, rgba(255,215,0,0.3) 0%, rgba(255,193,7,0.3) 100%)',
+                    border: '2px solid #FFD700',
+                    borderRadius: '8px 8px 0 0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '48px',
+                    fontWeight: 800,
+                    color: '#FFD700',
+                    boxShadow: '0 0 20px rgba(255,215,0,0.4)'
+                  }}>1</div>
+                </div>
+              )}
+
+              {/* 3rd Place */}
+              {sortedPlayers[2] && (
+                <div style={{
+                  textAlign: 'center',
+                  minWidth: '200px',
+                  cursor: 'pointer'
+                }} onClick={() => navigate(`/profile/${sortedPlayers[2].id}`)}>
+                  <div style={{
+                    fontSize: '48px',
+                    marginBottom: '12px'
+                  }}>🥉</div>
+                  <div style={{
+                    fontSize: '20px',
+                    fontWeight: 700,
+                    color: '#CD7F32',
+                    marginBottom: '8px'
+                  }}>{sortedPlayers[2].username}</div>
+                  <div style={{
+                    fontSize: '14px',
+                    color: '#B8B8D0',
+                    marginBottom: '12px'
+                  }}>Level {sortedPlayers[2].level}</div>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    color: '#00E5FF',
+                    marginBottom: '16px'
+                  }}>
+                    <img src={flashPoint} alt="" style={{ width: '20px', height: '20px' }} />
+                    {sortedPlayers[2].flash_points.toLocaleString()}
+                  </div>
+                  <div style={{
+                    height: '100px',
+                    background: 'linear-gradient(135deg, rgba(205,127,50,0.2) 0%, rgba(184,115,51,0.2) 100%)',
+                    border: '2px solid #CD7F32',
+                    borderRadius: '8px 8px 0 0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '36px',
+                    fontWeight: 800,
+                    color: '#CD7F32'
+                  }}>3</div>
+                </div>
+              )}
+            </div>
+
+            {/* Top 10 List */}
+            {sortedPlayers.length > 3 && (
+              <div>
+                <h3 style={{ 
+                  textAlign: 'center', 
+                  marginBottom: '24px', 
+                  color: '#00E5FF',
+                  fontSize: '20px'
+                }}>
+                  ⭐ TOP 10 Legends
+                </h3>
+                <div style={{
+                  display: 'grid',
+                  gap: '12px',
+                  maxWidth: '800px',
+                  margin: '0 auto'
+                }}>
+                  {sortedPlayers.slice(3, 10).map((player, index) => {
+                    const rank = index + 4;
+                    return (
+                      <div
+                        key={player.id}
+                        onClick={() => navigate(`/profile/${player.id}`)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '16px',
+                          padding: '16px',
+                          background: 'rgba(18, 18, 30, 0.6)',
+                          border: '2px solid rgba(0,229,255,0.2)',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'rgba(0,229,255,0.1)';
+                          e.currentTarget.style.borderColor = 'rgba(0,229,255,0.5)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'rgba(18, 18, 30, 0.6)';
+                          e.currentTarget.style.borderColor = 'rgba(0,229,255,0.2)';
+                        }}
+                      >
+                        <div style={{
+                          fontSize: '20px',
+                          fontWeight: 700,
+                          color: '#B8B8D0',
+                          minWidth: '40px',
+                          textAlign: 'center'
+                        }}>
+                          #{rank}
+                        </div>
+                        <div style={{
+                          fontSize: '32px'
+                        }}>
+                          {rank === 4 ? '⭐' : rank === 5 ? '🎯' : rank === 6 ? '💡' : rank === 7 ? '👑' : rank === 8 ? '🧠' : rank === 9 ? '🔮' : '📚'}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{
+                            fontSize: '18px',
+                            fontWeight: 600,
+                            color: '#E0E0E0',
+                            marginBottom: '4px'
+                          }}>
+                            {player.username}
+                          </div>
+                          <div style={{
+                            fontSize: '13px',
+                            color: '#B8B8D0'
+                          }}>
+                            Level {player.level}
+                          </div>
+                        </div>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          fontSize: '16px',
+                          fontWeight: 600,
+                          color: '#00E5FF'
+                        }}>
+                          <img src={flashPoint} alt="" style={{ width: '20px', height: '20px' }} />
+                          {player.flash_points.toLocaleString()}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </Card>
     </main>

@@ -22,11 +22,12 @@ const Chat = lazy(() => import('@features/social/components/Chat'))
 const AddQuestion = lazy(() => import('@features/admin/components/AddQuestion'))
 const AdminPanel = lazy(() => import('@features/admin/components/AdminPanel'))
 const Ranking = lazy(() => import('@pages/Ranking'))
-const TopPlayers = lazy(() => import('@pages/TopPlayers'))
+// const TopPlayers = lazy(() => import('@pages/TopPlayers')) // Zintegrowane w Ranking
 const Settings = lazy(() => import('@pages/Settings'))
 const DuelLobby = lazy(() => import('@features/game/components/DuelLobby'))
 const DuelChallenge = lazy(() => import('@features/game/components/DuelChallenge'))
 const DuelGame = lazy(() => import('@features/game/components/DuelGame'))
+const MasterMode = lazy(() => import('@pages/MasterMode'))
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -50,6 +51,9 @@ createRoot(document.getElementById('root')!).render(
               <Route path="/duel/challenge" element={<ProtectedRoute><DuelChallenge /></ProtectedRoute>} />
               <Route path="/duel/:matchId" element={<ProtectedRoute><DuelGame /></ProtectedRoute>} />
               
+              {/* Master Mode */}
+              <Route path="/master" element={<ProtectedRoute><MasterMode /></ProtectedRoute>} />
+              
               {/* Strony tylko dla gości (niezalogowanych) */}
               <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
               <Route path="/register" element={<GuestRoute><Register /></GuestRoute>} />
@@ -63,7 +67,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="/friends" element={<ProtectedRoute><Friends /></ProtectedRoute>} />
               <Route path="/find-friends" element={<ProtectedRoute><FriendSearch /></ProtectedRoute>} />
               <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
-              <Route path="/top-players" element={<ProtectedRoute><TopPlayers /></ProtectedRoute>} />
+              {/* <Route path="/top-players" element={<ProtectedRoute><TopPlayers /></ProtectedRoute>} /> */}
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/add-question" element={<ProtectedRoute><AddQuestion /></ProtectedRoute>} />
               

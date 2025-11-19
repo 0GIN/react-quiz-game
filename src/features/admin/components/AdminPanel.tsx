@@ -1,154 +1,290 @@
-import { Card } from '@shared/ui';
+import { useState, useEffect } from 'react';
+import { useAuth } from '@features/auth';
+import { Card, MaterialIcon, Spinner } from '@shared/ui';
+import { 
+  getAllSuggestions, 
+  approveSuggestion, 
+  rejectSuggestion,
+  type SuggestedQuestion 
+} from '@/services/suggestionService';
 
 export default function AdminPanel() {
+  const { user } = useAuth();
+  const [suggestions, setSuggestions] = useState<SuggestedQuestion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
+  const [rejectComment, setRejectComment] = useState('');
+
+  useEffect(() => {
+    loadSuggestions();
+  }, []);
+
+  const loadSuggestions = async () => {
+    setLoading(true);
+    try {
+      console.log('🔄 AdminPanel: Loading suggestions...');
+      const result = await getAllSuggestions('pending');
+      console.log('📦 AdminPanel: Result from getAllSuggestions:', result);
+      
+      if (result.success && result.data) {
+        console.log('✅ AdminPanel: Setting suggestions:', result.data.length, 'items');
+        setSuggestions(result.data);
+      } else {
+        console.error('❌ AdminPanel: Failed to load suggestions:', result.error);
+      }
+    } catch (error) {
+      console.error('❌ AdminPanel: Exception loading suggestions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprove = async (suggestionId: string) => {
+    if (!user) return;
+    
+    setProcessingId(suggestionId);
+    try {
+      const result = await approveSuggestion(suggestionId, user.id, 50, 100);
+      if (result.success) {
+        setSuggestions(prev => prev.filter(s => s.id !== suggestionId));
+      } else {
+        alert(`Błąd: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error approving:', error);
+      alert('Nie udało się zatwierdzić pytania');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleReject = async (suggestionId: string) => {
+    if (!user) return;
+
+    setProcessingId(suggestionId);
+    try {
+      const result = await rejectSuggestion(suggestionId, user.id, rejectComment || undefined);
+      if (result.success) {
+        setSuggestions(prev => prev.filter(s => s.id !== suggestionId));
+        setShowRejectModal(null);
+        setRejectComment('');
+      } else {
+        alert(`Błąd: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error rejecting:', error);
+      alert('Nie udało się odrzucić pytania');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const getDifficultyBadge = (level: string) => {
+    switch (level) {
+      case 'easy':
+        return <span style={{ color: '#4CAF50' }}>🟢 Łatwy (10 pkt)</span>;
+      case 'medium':
+        return <span style={{ color: '#FFC107' }}>🟡 Średni (20 pkt)</span>;
+      case 'hard':
+        return <span style={{ color: '#f44336' }}>🔴 Trudny (30 pkt)</span>;
+      default:
+        return null;
+    }
+  };
+
   return (
     <main className="main">
       <Card className="admin-page">
         <h2>🛡️ Panel Admina</h2>
         <p className="page-subtitle">Zarządzanie platformą QuizGame</p>
 
-        <div className="admin-stats-grid">
-          <div className="admin-stat-card">
-            <div className="admin-stat-icon">👥</div>
-            <div className="admin-stat-value">15,482</div>
-            <div className="admin-stat-label">Użytkowników</div>
-            <div className="admin-stat-change positive">+234 dziś</div>
-          </div>
-
-          <div className="admin-stat-card">
-            <div className="admin-stat-icon">🎮</div>
-            <div className="admin-stat-value">89,234</div>
-            <div className="admin-stat-label">Gier rozegranych</div>
-            <div className="admin-stat-change positive">+1,523 dziś</div>
-          </div>
-
-          <div className="admin-stat-card">
-            <div className="admin-stat-icon">❓</div>
-            <div className="admin-stat-value">3,847</div>
-            <div className="admin-stat-label">Pytań w bazie</div>
-            <div className="admin-stat-change positive">+12 dziś</div>
-          </div>
-
-          <div className="admin-stat-card">
-            <div className="admin-stat-icon">⚠️</div>
-            <div className="admin-stat-value">23</div>
-            <div className="admin-stat-label">Zgłoszeń</div>
-            <div className="admin-stat-change negative">Wymaga akcji</div>
-          </div>
-        </div>
-
         <div className="admin-section">
-          <h3 className="admin-section-title">Moderacja pytań</h3>
-          <p className="section-desc">Pytania oczekujące na zatwierdzenie</p>
-          
-          <div className="pending-questions">
-            <div className="pending-question-item">
-              <div className="pending-question-header">
-                <div className="pending-author">
-                  <span className="author-avatar">👤</span>
-                  <span className="author-name">ProGamer123</span>
-                </div>
-                <div className="pending-category">Historia</div>
-              </div>
-              <div className="pending-question-text">
-                W którym roku odbyła się bitwa pod Grunwaldem?
-              </div>
-              <div className="pending-answers">
-                <div className="pending-answer correct">1410 ✓</div>
-                <div className="pending-answer">1415</div>
-                <div className="pending-answer">1420</div>
-                <div className="pending-answer">1400</div>
-              </div>
-              <div className="pending-actions">
-                <button className="btn-small primary">✓ Zatwierdź</button>
-                <button className="btn-small">✎ Edytuj</button>
-                <button className="btn-small">✗ Odrzuć</button>
-              </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div>
+              <h3 className="admin-section-title">Moderacja pytań</h3>
+              <p className="section-desc">Pytania oczekujące na zatwierdzenie ({suggestions.length})</p>
             </div>
-
-            <div className="pending-question-item">
-              <div className="pending-question-header">
-                <div className="pending-author">
-                  <span className="author-avatar">🎮</span>
-                  <span className="author-name">QuizMaster99</span>
-                </div>
-                <div className="pending-category">Nauka</div>
-              </div>
-              <div className="pending-question-text">
-                Jaki jest symbol chemiczny złota?
-              </div>
-              <div className="pending-answers">
-                <div className="pending-answer correct">Au ✓</div>
-                <div className="pending-answer">Ag</div>
-                <div className="pending-answer">Fe</div>
-                <div className="pending-answer">Zn</div>
-              </div>
-              <div className="pending-actions">
-                <button className="btn-small primary">✓ Zatwierdź</button>
-                <button className="btn-small">✎ Edytuj</button>
-                <button className="btn-small">✗ Odrzuć</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="admin-section">
-          <h3 className="admin-section-title">Zgłoszenia</h3>
-          
-          <div className="reports-list">
-            <div className="report-item">
-              <div className="report-icon">⚠️</div>
-              <div className="report-content">
-                <div className="report-title">Niewłaściwa nazwa użytkownika</div>
-                <div className="report-desc">Zgłoszenie: Użytkownik "BadWord123" ma obraźliwą nazwę</div>
-                <div className="report-meta">
-                  <span>Zgłoszone przez: SafePlayer</span>
-                  <span>15 min temu</span>
-                </div>
-              </div>
-              <div className="report-actions">
-                <button className="btn-small primary">Rozpatrz</button>
-              </div>
-            </div>
-
-            <div className="report-item">
-              <div className="report-icon">❓</div>
-              <div className="report-content">
-                <div className="report-title">Błędne pytanie</div>
-                <div className="report-desc">Pytanie #2847 ma nieprawidłową poprawną odpowiedź</div>
-                <div className="report-meta">
-                  <span>Zgłoszone przez: SmartPlayer</span>
-                  <span>1 godz. temu</span>
-                </div>
-              </div>
-              <div className="report-actions">
-                <button className="btn-small primary">Rozpatrz</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="admin-section">
-          <h3 className="admin-section-title">Szybkie akcje</h3>
-          
-          <div className="admin-quick-actions">
-            <button className="admin-action-btn">
-              <span className="admin-action-icon">➕</span>
-              <span className="admin-action-label">Dodaj pytanie</span>
-            </button>
-            <button className="admin-action-btn">
-              <span className="admin-action-icon">📢</span>
-              <span className="admin-action-label">Wyślij ogłoszenie</span>
-            </button>
-            <button className="admin-action-btn">
-              <span className="admin-action-icon">🏆</span>
-              <span className="admin-action-label">Zarządzaj eventami</span>
-            </button>
-            <button className="admin-action-btn">
-              <span className="admin-action-icon">📊</span>
-              <span className="admin-action-label">Raporty</span>
+            <button 
+              onClick={loadSuggestions}
+              style={{
+                padding: '10px 16px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '8px',
+                color: '#E0E0E0',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
+              <MaterialIcon icon="refresh" size={18} />
+              Odśwież
             </button>
           </div>
+          
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+              <Spinner />
+              <p style={{ color: '#B0B0B0', marginTop: '16px' }}>Ładowanie propozycji...</p>
+            </div>
+          ) : suggestions.length === 0 ? (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '40px 20px',
+              background: 'rgba(255,255,255,0.03)',
+              borderRadius: '12px',
+            }}>
+              <MaterialIcon icon="check_circle" size={48} style={{ color: '#4CAF50', marginBottom: '12px' }} />
+              <p style={{ color: '#E0E0E0', fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
+                Brak oczekujących propozycji
+              </p>
+              <p style={{ color: '#808080', fontSize: '14px' }}>
+                Wszystkie pytania zostały rozpatrzone
+              </p>
+            </div>
+          ) : (
+            <div className="pending-questions">
+              {suggestions.map(suggestion => (
+                <div key={suggestion.id} className="pending-question-item">
+                  <div className="pending-question-header">
+                    <div className="pending-author">
+                      <span className="author-avatar">👤</span>
+                      <span className="author-name">{suggestion.author?.username || 'Nieznany'}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div className="pending-category">{suggestion.category?.name || 'Bez kategorii'}</div>
+                      <div style={{ fontSize: '13px' }}>
+                        {getDifficultyBadge(suggestion.difficulty_level)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="pending-question-text">
+                    {suggestion.question_text}
+                  </div>
+                  <div className="pending-answers">
+                    <div className="pending-answer correct">{suggestion.correct_answer} ✓</div>
+                    <div className="pending-answer">{suggestion.wrong_answer_1}</div>
+                    <div className="pending-answer">{suggestion.wrong_answer_2}</div>
+                    <div className="pending-answer">{suggestion.wrong_answer_3}</div>
+                  </div>
+                  <div className="pending-actions">
+                    <button 
+                      className="btn-small primary"
+                      onClick={() => handleApprove(suggestion.id)}
+                      disabled={processingId === suggestion.id}
+                      style={{
+                        opacity: processingId === suggestion.id ? 0.5 : 1,
+                        cursor: processingId === suggestion.id ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {processingId === suggestion.id ? <Spinner /> : '✓ Zatwierdź'}
+                    </button>
+                    <button 
+                      className="btn-small"
+                      onClick={() => setShowRejectModal(suggestion.id)}
+                      disabled={processingId === suggestion.id}
+                      style={{
+                        opacity: processingId === suggestion.id ? 0.5 : 1,
+                        cursor: processingId === suggestion.id ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      ✗ Odrzuć
+                    </button>
+                  </div>
+
+                  {/* Modal odrzucenia */}
+                  {showRejectModal === suggestion.id && (
+                    <div style={{
+                      position: 'fixed',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      background: 'rgba(0,0,0,0.8)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      zIndex: 1000,
+                    }}>
+                      <div style={{
+                        background: '#1A1A2E',
+                        padding: '24px',
+                        borderRadius: '16px',
+                        maxWidth: '500px',
+                        width: '90%',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                      }}>
+                        <h3 style={{ color: '#E0E0E0', marginBottom: '16px' }}>
+                          Odrzuć pytanie
+                        </h3>
+                        <p style={{ color: '#B0B0B0', marginBottom: '16px', fontSize: '14px' }}>
+                          Możesz dodać komentarz dla autora (opcjonalnie):
+                        </p>
+                        <textarea
+                          value={rejectComment}
+                          onChange={(e) => setRejectComment(e.target.value)}
+                          placeholder="Np. Pytanie jest zbyt proste / Błędna odpowiedź / Duplikat..."
+                          maxLength={500}
+                          rows={4}
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            background: 'rgba(255,255,255,0.05)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '8px',
+                            color: '#E0E0E0',
+                            fontSize: '14px',
+                            marginBottom: '16px',
+                            resize: 'vertical',
+                          }}
+                        />
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                          <button
+                            onClick={() => handleReject(suggestion.id)}
+                            disabled={processingId === suggestion.id}
+                            style={{
+                              flex: 1,
+                              padding: '12px',
+                              background: '#f44336',
+                              border: 'none',
+                              borderRadius: '8px',
+                              color: 'white',
+                              fontWeight: 600,
+                              cursor: processingId === suggestion.id ? 'not-allowed' : 'pointer',
+                              opacity: processingId === suggestion.id ? 0.5 : 1,
+                            }}
+                          >
+                            {processingId === suggestion.id ? <Spinner /> : 'Odrzuć pytanie'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowRejectModal(null);
+                              setRejectComment('');
+                            }}
+                            disabled={processingId === suggestion.id}
+                            style={{
+                              flex: 1,
+                              padding: '12px',
+                              background: 'rgba(255,255,255,0.05)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '8px',
+                              color: '#E0E0E0',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Anuluj
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </Card>
     </main>

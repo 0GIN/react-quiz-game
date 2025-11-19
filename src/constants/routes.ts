@@ -15,6 +15,7 @@ export const ROUTES = {
   DUEL: '/duel',
   DUEL_CHALLENGE: '/duel/challenge',
   DUEL_GAME: '/duel/:matchId',
+  MASTER: '/master',
   RULES: '/rules',
   
   // Profile & Stats

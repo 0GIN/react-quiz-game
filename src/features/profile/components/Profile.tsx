@@ -36,6 +36,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@features/auth/hooks/useAuth';
 import { getProfile, updateBio, type FullUserProfile } from '@/services/profileService';
+import { createDuelChallenge } from '@/services/duelService';
 import { supabase } from '@/lib/supabase';
 import { Layout, Card, MaterialIcon, Spinner } from '@shared/ui';
 import '@/styles/ui.css';
@@ -229,6 +230,33 @@ export default function Profile() {
       fetchProfile();
     } else {
       alert(result.error || 'Failed to update bio');
+    }
+  };
+
+  const handleChallengeUser = async () => {
+    if (!user || !userId) return;
+
+    const message = prompt(`Wyślij wyzwanie do ${profile?.username}:\n(Opcjonalna wiadomość)`);
+    
+    // Jeśli użytkownik kliknął Cancel, nie wysyłaj
+    if (message === null) return;
+
+    try {
+      const result = await createDuelChallenge(
+        user.id,
+        userId,
+        message || undefined
+      );
+
+      if (result.success) {
+        alert(`✅ Wyzwanie wysłane do ${profile?.username}!`);
+        navigate('/duel');
+      } else {
+        alert(result.error || 'Nie udało się wysłać wyzwania');
+      }
+    } catch (error) {
+      console.error('Error sending challenge:', error);
+      alert('Wystąpił błąd podczas wysyłania wyzwania');
     }
   };
 
@@ -450,7 +478,7 @@ export default function Profile() {
                   <button 
                     className="btn" 
                     style={{ whiteSpace: 'nowrap' }}
-                    onClick={() => {/* TODO: Wyzwij do gry */}}
+                    onClick={handleChallengeUser}
                   >
                     <MaterialIcon icon="swords" size={20} />
                     Wyzwij do gry

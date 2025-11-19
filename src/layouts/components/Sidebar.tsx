@@ -36,7 +36,6 @@ import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
 import PeopleIcon from '@mui/icons-material/People'
 import SearchIcon from '@mui/icons-material/Search'
 import ChatBubbleIcon from '@mui/icons-material/ChatBubble'
-import LeaderboardIcon from '@mui/icons-material/Leaderboard'
 import AddIcon from '@mui/icons-material/AddBox'
 import SettingsIcon from '@mui/icons-material/Settings'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
@@ -226,11 +225,6 @@ export default function Sidebar() {
             )}
           </Link>
         </li>
-        <li>
-          <Link to="/top-players" className={`nav-item ${isActive('/top-players') ? 'active' : ''}`}>
-            <LeaderboardIcon className="nav-icon" /> Najlepsi
-          </Link>
-        </li>
         <li className="spacer"></li>
         <li>
           <Link to="/add-question" className={`nav-item add ${isActive('/add-question') ? 'active' : ''}`}>
@@ -240,6 +234,11 @@ export default function Sidebar() {
         <li>
           <Link to="/settings" className={`nav-item ${isActive('/settings') ? 'active' : ''}`}>
             <SettingsIcon className="nav-icon secondary" /> Ustawienia
+          </Link>
+        </li>
+        <li>
+          <Link to="/rules" className={`nav-item ${isActive('/rules') ? 'active' : ''}`}>
+            <ArticleIcon className="nav-icon secondary" /> Regulamin
           </Link>
         </li>
         

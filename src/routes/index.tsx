@@ -20,13 +20,14 @@ const Shop = lazy(() => import('@/features/shop/components/Shop'));
 const Friends = lazy(() => import('@/features/social/components/Friends'));
 const FriendSearch = lazy(() => import('@/features/social/components/FriendSearch'));
 const Chat = lazy(() => import('@/features/social/components/Chat'));
-const TopPlayers = lazy(() => import('@/pages/TopPlayers'));
+// const TopPlayers = lazy(() => import('@/pages/TopPlayers')); // Zintegrowane w Ranking
 const Settings = lazy(() => import('@/pages/Settings'));
 const AddQuestion = lazy(() => import('@/features/admin/components/AddQuestion'));
 const AdminPanel = lazy(() => import('@/features/admin/components/AdminPanel'));
 const DuelLobby = lazy(() => import('@/features/game/components/DuelLobby'));
 const DuelChallenge = lazy(() => import('@/features/game/components/DuelChallenge'));
 const DuelGame = lazy(() => import('@/features/game/components/DuelGame'));
+const MasterMode = lazy(() => import('@/pages/MasterMode'));
 
 // Route guards
 import ProtectedRoute from '@/shared/components/ProtectedRoute';
@@ -159,13 +160,21 @@ export const routes: RouteObject[] = [
     ),
   },
   {
-    path: ROUTES.TOP_PLAYERS,
+    path: ROUTES.MASTER,
     element: (
       <ProtectedRoute>
-        <TopPlayers />
+        <MasterMode />
       </ProtectedRoute>
     ),
   },
+  // {
+  //   path: ROUTES.TOP_PLAYERS,
+  //   element: (
+  //     <ProtectedRoute>
+  //       <TopPlayers />
+  //     </ProtectedRoute>
+  //   ),
+  // },
   {
     path: ROUTES.SETTINGS,
     element: (

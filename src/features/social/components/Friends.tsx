@@ -13,6 +13,7 @@ import {
   type Friend,
   type FriendRequest
 } from '@/services/friendService';
+import { createDuelChallenge } from '@/services/duelService';
 import { getDisplayAvatar } from '@/utils/avatar';
 import '@/styles/ui.css';
 import '@/styles/Friends.css';
@@ -25,6 +26,7 @@ export default function Friends() {
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showChallengeModal, setShowChallengeModal] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -95,9 +97,12 @@ export default function Friends() {
   };
 
   const handleChallengeFriend = (friendId: string) => {
-    // TODO: Implementacja wyzwania do gry
-    console.log('Challenge friend:', friendId);
-    alert('Funkcja wyzwania będzie wkrótce dostępna!');
+    setShowChallengeModal(friendId);
+  };
+
+  const handleSelectChallengeMode = (friendId: string, isMaster: boolean) => {
+    setShowChallengeModal(null);
+    navigate('/duel/challenge', { state: { isMaster, preselectedFriendId: friendId } });
   };
 
   const handleMessageFriend = (friendId: string) => {
@@ -330,6 +335,126 @@ export default function Friends() {
           </div>
         )}
       </Card>
+
+      {/* Modal wyboru trybu wyzwania */}
+      {showChallengeModal && (() => {
+        const friend = friends.find(f => f.friend_id === showChallengeModal);
+        if (!friend) return null;
+
+        return (
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0,0,0,0.8)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+            }}
+            onClick={() => setShowChallengeModal(null)}
+          >
+            <div
+              style={{
+                background: '#1A1A2E',
+                padding: '32px',
+                borderRadius: '16px',
+                maxWidth: '500px',
+                width: '90%',
+                border: '1px solid rgba(255,255,255,0.1)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 style={{ color: '#E0E0E0', marginBottom: '8px', fontSize: '20px' }}>
+                Wybierz tryb wyzwania
+              </h3>
+              <p style={{ color: '#B0B0B0', marginBottom: '24px', fontSize: '14px' }}>
+                Wyślij wyzwanie do <strong style={{ color: '#00E5FF' }}>{friend.friend_data.username}</strong>
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <button
+                  onClick={() => handleSelectChallengeMode(showChallengeModal, false)}
+                  style={{
+                    padding: '20px',
+                    background: 'rgba(0,229,255,0.1)',
+                    border: '2px solid rgba(0,229,255,0.3)',
+                    borderRadius: '12px',
+                    color: '#E0E0E0',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(0,229,255,0.15)';
+                    e.currentTarget.style.borderColor = 'rgba(0,229,255,0.5)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(0,229,255,0.1)';
+                    e.currentTarget.style.borderColor = 'rgba(0,229,255,0.3)';
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '24px' }}>⚔️</span>
+                    <strong style={{ color: '#00E5FF', fontSize: '16px' }}>Duel</strong>
+                  </div>
+                  <p style={{ color: '#B0B0B0', fontSize: '13px', margin: 0 }}>
+                    5 rund po 3 pytania z różnych kategorii
+                  </p>
+                </button>
+
+                <button
+                  onClick={() => handleSelectChallengeMode(showChallengeModal, true)}
+                  style={{
+                    padding: '20px',
+                    background: 'rgba(255,215,0,0.1)',
+                    border: '2px solid rgba(255,215,0,0.3)',
+                    borderRadius: '12px',
+                    color: '#E0E0E0',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,215,0,0.15)';
+                    e.currentTarget.style.borderColor = 'rgba(255,215,0,0.5)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,215,0,0.1)';
+                    e.currentTarget.style.borderColor = 'rgba(255,215,0,0.3)';
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '24px' }}>👑</span>
+                    <strong style={{ color: '#FFD700', fontSize: '16px' }}>Master</strong>
+                  </div>
+                  <p style={{ color: '#B0B0B0', fontSize: '13px', margin: 0 }}>
+                    5 rund po 3 pytania z wybranej kategorii
+                  </p>
+                </button>
+
+                <button
+                  onClick={() => setShowChallengeModal(null)}
+                  style={{
+                    padding: '12px',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    color: '#B0B0B0',
+                    cursor: 'pointer',
+                    marginTop: '8px',
+                  }}
+                >
+                  Anuluj
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </main>
   );
 }
