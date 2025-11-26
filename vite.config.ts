@@ -47,6 +47,9 @@ export default defineConfig({
       '@utils': path.resolve(__dirname, './src/utils'),
       // Shim problematic Emotion polyfill to avoid runtime crash
       '@emotion/use-insertion-effect-with-fallbacks': path.resolve(__dirname, './src/shims/emotion-insertion-shim.ts'),
+      // Hard alias React to a single path to avoid duplicate instances
+      'react': path.resolve(__dirname, 'node_modules/react'),
+      'react-dom': path.resolve(__dirname, 'node_modules/react-dom')
     },
     // Ensure single instance of these deps to avoid duplicate bundles
     dedupe: ['react', 'react-dom', '@emotion/react', '@emotion/cache']
@@ -97,6 +100,15 @@ export default defineConfig({
   },
 
   optimizeDeps: {
-    include: ['react', 'react-dom', 'react-router-dom', '@supabase/supabase-js', '@emotion/react', '@emotion/cache']
+    include: [
+      'react',
+      'react-dom',
+      'react-router-dom',
+      '@mui/material',
+      '@mui/icons-material',
+      '@supabase/supabase-js',
+      '@emotion/react',
+      '@emotion/cache'
+    ]
   }
 })
