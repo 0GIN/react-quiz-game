@@ -50,7 +50,8 @@ export default defineConfig({
 
   build: {
     sourcemap: true,
-    minify: 'esbuild',
+    // Use no minify to validate runtime on Vercel; can switch back later
+    minify: false,
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
@@ -74,7 +75,8 @@ export default defineConfig({
         assetFileNames: 'assets/[ext]/[name]-[hash].[ext]'
       }
     },
-    target: 'es2018'
+    // Lower target for broader compatibility
+    target: 'es2015'
   },
 
   server: {
