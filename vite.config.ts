@@ -45,7 +45,9 @@ export default defineConfig({
       '@pages': path.resolve(__dirname, './src/pages'),
       '@services': path.resolve(__dirname, './src/services'),
       '@utils': path.resolve(__dirname, './src/utils'),
-    }
+    },
+    // Ensure single instance of these deps to avoid duplicate bundles
+    dedupe: ['react', 'react-dom', '@emotion/react', '@emotion/cache']
   },
 
   build: {
@@ -93,6 +95,6 @@ export default defineConfig({
   },
 
   optimizeDeps: {
-    include: ['react', 'react-dom', 'react-router-dom', '@supabase/supabase-js']
+    include: ['react', 'react-dom', 'react-router-dom', '@supabase/supabase-js', '@emotion/react', '@emotion/cache']
   }
 })
