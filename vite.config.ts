@@ -49,10 +49,12 @@ export default defineConfig({
       '@emotion/use-insertion-effect-with-fallbacks': path.resolve(__dirname, './src/shims/emotion-insertion-shim.ts'),
       // Hard alias React to a single path to avoid duplicate instances
       'react': path.resolve(__dirname, 'node_modules/react'),
-      'react-dom': path.resolve(__dirname, 'node_modules/react-dom')
+      'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
+      'react/jsx-runtime': path.resolve(__dirname, 'node_modules/react/jsx-runtime.js'),
+      'react/jsx-dev-runtime': path.resolve(__dirname, 'node_modules/react/jsx-dev-runtime.js')
     },
     // Ensure single instance of these deps to avoid duplicate bundles
-    dedupe: ['react', 'react-dom', '@emotion/react', '@emotion/cache']
+    dedupe: ['react', 'react-dom', 'react/jsx-runtime', 'react/jsx-dev-runtime', '@emotion/react', '@emotion/cache']
   },
 
   build: {
