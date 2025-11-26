@@ -13,6 +13,8 @@ export default function AddQuestion() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [historyOpenId, setHistoryOpenId] = useState<string | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -40,7 +42,21 @@ export default function AddQuestion() {
       ]);
 
       setCategories(cats);
-      setMySuggestions(suggestions);
+      // Uzupełnij nick moderatora gdy relacja nie jest dostępna przez RLS
+      const enriched = await Promise.all(
+        (suggestions || []).map(async (s) => {
+          if (!s.reviewer && s.reviewed_by) {
+            try {
+              const { username } = await fetchReviewerUsername(s.reviewed_by);
+              return { ...s, reviewer: { id: s.reviewed_by, username } } as any;
+            } catch {
+              return s;
+            }
+          }
+          return s;
+        })
+      );
+      setMySuggestions(enriched);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -114,6 +130,18 @@ export default function AddQuestion() {
       setSubmitting(false);
     }
   };
+
+  // Pomocnicza funkcja: pobierz nick moderatora po ID
+  async function fetchReviewerUsername(userId: string): Promise<{ username: string }> {
+    const { supabase } = await import('@/lib/supabase');
+    const { data, error } = await supabase
+      .from('users')
+      .select('username')
+      .eq('id', userId)
+      .single();
+    if (error || !data) throw error || new Error('Brak danych użytkownika');
+    return { username: data.username as string };
+  }
 
   const handleReset = () => {
     setFormData({
@@ -192,7 +220,52 @@ export default function AddQuestion() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit}>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!user || submitting) return;
+                if (editId) {
+                  // Ponowne zgłoszenie odrzuconej propozycji po edycji
+                  setSubmitting(true);
+                  try {
+                    const { resubmitSuggestion } = await import('@/services/suggestionService');
+                    const result = await resubmitSuggestion(editId, {
+                      category_id: parseInt(formData.category_id),
+                      difficulty_level: formData.difficulty_level as 'easy' | 'medium' | 'hard',
+                      question_text: formData.question_text,
+                      correct_answer: formData.correct_answer,
+                      wrong_answer_1: formData.wrong_answer_1,
+                      wrong_answer_2: formData.wrong_answer_2,
+                      wrong_answer_3: formData.wrong_answer_3,
+                    });
+                    if (result.success) {
+                      setShowSuccess(true);
+                      setEditId(null);
+                      setFormData({
+                        category_id: '',
+                        difficulty_level: '',
+                        question_text: '',
+                        correct_answer: '',
+                        wrong_answer_1: '',
+                        wrong_answer_2: '',
+                        wrong_answer_3: '',
+                      });
+                      loadData();
+                      setTimeout(() => setShowSuccess(false), 5000);
+                    } else {
+                      alert(`Błąd: ${result.error}`);
+                    }
+                  } catch (err) {
+                    console.error('Resubmit error:', err);
+                    alert('Nie udało się wysłać ponownie propozycji');
+                  } finally {
+                    setSubmitting(false);
+                  }
+                  return;
+                }
+                await handleSubmit(e as any);
+              }}
+            >
               <div style={{ display: 'grid', gap: '20px' }}>
                 <div>
                   <label style={{ display: 'block', color: '#E0E0E0', marginBottom: '8px', fontWeight: 600 }}>
@@ -346,7 +419,7 @@ export default function AddQuestion() {
                     ) : (
                       <>
                         <MaterialIcon icon="send" size={20} />
-                        Wyślij pytanie
+                        {editId ? 'Wyślij ponownie' : 'Wyślij pytanie'}
                       </>
                     )}
                   </button>
@@ -411,9 +484,17 @@ export default function AddQuestion() {
                             {suggestion.category?.name} • {suggestion.difficulty_level === 'easy' ? '🟢 Łatwy' : suggestion.difficulty_level === 'medium' ? '🟡 Średni' : '🔴 Trudny'}
                           </div>
                         </div>
-                        {getStatusBadge(suggestion.status)}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {getStatusBadge(suggestion.status)}
+                          {suggestion.status === 'approved' && (
+                            <span style={{ color: '#A0A0A0', fontSize: '12px' }}>
+                              Zaakceptowano przez {suggestion.reviewer?.username || 'moderatora'}{suggestion.reviewed_at ? `, ${new Date(suggestion.reviewed_at).toLocaleDateString()}` : ''}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      {suggestion.admin_comment && (
+                      {/* Komentarz admina widoczny tylko gdy odrzucono */}
+                      {suggestion.admin_comment && suggestion.status === 'rejected' && (
                         <div style={{
                           marginTop: '12px',
                           padding: '12px',
@@ -427,6 +508,90 @@ export default function AddQuestion() {
                           <div style={{ color: '#B0B0B0', fontSize: '13px' }}>
                             {suggestion.admin_comment}
                           </div>
+                        </div>
+                      )}
+
+                      {/* Historia pytania (toggle) — ukryta dla zaakceptowanych */}
+                      {suggestion.status !== 'approved' && (
+                        <div style={{ marginTop: '10px' }}>
+                          <button
+                            type="button"
+                            onClick={() => setHistoryOpenId(prev => (prev === suggestion.id ? null : suggestion.id))}
+                            style={{
+                              padding: '8px 12px',
+                              background: 'rgba(255,255,255,0.05)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '8px',
+                              color: '#E0E0E0',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {historyOpenId === suggestion.id ? 'Ukryj historię' : 'Pokaż historię'}
+                          </button>
+
+                          {historyOpenId === suggestion.id && (
+                            <div style={{
+                              marginTop: '10px',
+                              padding: '12px',
+                              background: 'rgba(255,255,255,0.04)',
+                              border: '1px solid rgba(255,255,255,0.08)',
+                              borderRadius: '8px',
+                              color: '#C0C0C0',
+                              fontSize: '13px',
+                            }}>
+                              <div style={{ marginBottom: '6px' }}>
+                                <strong>Status:</strong> {suggestion.status}
+                              </div>
+                              {suggestion.reviewed_by && (
+                                <div style={{ marginBottom: '6px' }}>
+                                  <strong>Moderator:</strong> {suggestion.reviewer?.username || suggestion.reviewed_by}
+                                </div>
+                              )}
+                              {suggestion.reviewed_at && (
+                                <div style={{ marginBottom: '6px' }}>
+                                  <strong>Zweryfikowano:</strong> {new Date(suggestion.reviewed_at).toLocaleString()}
+                                </div>
+                              )}
+                              {suggestion.admin_comment && suggestion.status !== 'rejected' && (
+                                <div style={{ marginTop: '8px' }}>
+                                  <strong>Poprzedni komentarz:</strong>
+                                  <div style={{ marginTop: '4px', color: '#A0A0A0' }}>{suggestion.admin_comment}</div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {suggestion.status === 'rejected' && (
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditId(suggestion.id);
+                              setFormData({
+                                category_id: String(suggestion.category_id),
+                                difficulty_level: suggestion.difficulty_level,
+                                question_text: suggestion.question_text,
+                                correct_answer: suggestion.correct_answer,
+                                wrong_answer_1: suggestion.wrong_answer_1,
+                                wrong_answer_2: suggestion.wrong_answer_2,
+                                wrong_answer_3: suggestion.wrong_answer_3,
+                              });
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            style={{
+                              padding: '10px 14px',
+                              background: 'rgba(33,150,243,0.15)',
+                              border: '1px solid rgba(33,150,243,0.35)',
+                              borderRadius: '10px',
+                              color: '#E0E0E0',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            ✏️ Edytuj i wyślij ponownie
+                          </button>
                         </div>
                       )}
                     </div>

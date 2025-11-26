@@ -1,6 +1,7 @@
 import { StrictMode, lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import './index.css'
 import '@styles/tokens.css'
 import { AuthProvider } from '@features/auth'
 import { MainLayout } from '@/layouts'
@@ -14,7 +15,9 @@ const Rules = lazy(() => import('@pages/Rules'))
 const GameBlitz = lazy(() => import('@features/game/components/GameBlitz'))
 const GameResult = lazy(() => import('@features/game/components/GameResult'))
 const GameHistory = lazy(() => import('@features/game/components/GameHistory'))
-const Profile = lazy(() => import('@features/profile/components/Profile'))
+// Używamy wrappera strony zamiast bezpośredniego komponentu feature,
+// aby uniknąć pomyłek z wieloma wersjami i móc łatwiej rozbudować SSR/loader.
+const Profile = lazy(() => import('@pages/Profile'))
 const Shop = lazy(() => import('@features/shop/components/Shop'))
 const Friends = lazy(() => import('@features/social/components/Friends'))
 const FriendSearch = lazy(() => import('@features/social/components/FriendSearch'))

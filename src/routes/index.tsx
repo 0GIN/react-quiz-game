@@ -13,7 +13,8 @@ const Register = lazy(() => import('@/features/auth/components/Register'));
 const Rules = lazy(() => import('@/pages/Rules'));
 const GameBlitz = lazy(() => import('@/features/game/components/GameBlitz'));
 const GameResult = lazy(() => import('@/features/game/components/GameResult'));
-const Profile = lazy(() => import('@/features/profile/components/Profile'));
+// Profile page wrapper (allows future expansion without touching feature component)
+const Profile = lazy(() => import('@/pages/Profile'));
 const Ranking = lazy(() => import('@/pages/Ranking'));
 const GameHistory = lazy(() => import('@/features/game/components/GameHistory'));
 const Shop = lazy(() => import('@/features/shop/components/Shop'));

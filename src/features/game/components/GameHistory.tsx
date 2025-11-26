@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@features/auth/hooks/useAuth';
 import { getGameHistory } from '@/services/gameService';
 import { getDuelHistory, type DuelMatch } from '@/services/duelService';
+import { supabase } from '@/lib/supabase';
 import { Card, MaterialIcon } from '@shared/ui';
 import '@/styles/ui.css';
 import '@/styles/GameHistory.css';
@@ -31,10 +32,10 @@ interface GameHistoryItem {
   };
 }
 
-// Ujednolicony typ dla historii (Blitz + Duel)
+// Ujednolicony typ dla historii (Blitz + Duel + Master)
 interface UnifiedHistoryItem {
   id: string;
-  type: 'blitz' | 'duel';
+  type: 'blitz' | 'duel' | 'master';
   timestamp: string;
   isWin: boolean;
   isDraw: boolean;
@@ -71,11 +72,26 @@ export default function GameHistory() {
     
     setLoading(true);
     
-    // Pobierz tylko 15 ostatnich gier z każdego typu
-    const [blitzResult, duelMatches] = await Promise.all([
-      getGameHistory(user.id, 15),
-      getDuelHistory(user.id, 15),
-    ]);
+    // Pobierz gry Blitz
+    const blitzResult = await getGameHistory(user.id, 15);
+    
+    // Pobierz duele (zwykłe i Master) z kategorią
+    const { data: duelMatches, error: duelError } = await supabase
+      .from('duel_matches')
+      .select(`
+        *,
+        player1:users!duel_matches_player1_id_fkey(id, username, avatar_url),
+        player2:users!duel_matches_player2_id_fkey(id, username, avatar_url),
+        master_category:categories!duel_matches_master_category_id_fkey(id, name, icon_emoji)
+      `)
+      .eq('status', 'completed')
+      .or(`player1_id.eq.${user.id},player2_id.eq.${user.id}`)
+      .order('completed_at', { ascending: false })
+      .limit(15);
+
+    if (duelError) {
+      console.error('Error fetching duel history:', duelError);
+    }
     
     const unified: UnifiedHistoryItem[] = [];
     
@@ -102,38 +118,42 @@ export default function GameHistory() {
       unified.push(...blitzGames);
     }
     
-    // Konwertuj Duel
-    duelMatches.forEach((duel: DuelMatch) => {
-      const isPlayer1 = user.id === duel.player1_id;
-      const myScore = isPlayer1 ? duel.player1_score : duel.player2_score;
-      const isWin = duel.winner_id === user.id;
-      const isDraw = duel.winner_id === null;
-      const opponent = isPlayer1 ? duel.player2 : duel.player1;
-      
-      // Nagród: wygraną 100 FP, remis 50 FP, przegrana 0 FP
-      const flashPoints = isWin ? 100 : (isDraw ? 50 : 0);
-      
-      // Szacunkowe XP (możesz dostosować)
-      const experience = isWin ? 150 : (isDraw ? 75 : 50);
-      
-      unified.push({
-        id: duel.id,
-        type: 'duel',
-        timestamp: duel.completed_at || duel.created_at,
-        isWin: isWin && !isDraw,
-        isDraw: isDraw,
-        mode: 'Duel',
-        modeCode: 'duel',
-        score: myScore,
-        totalQuestions: 15, // 5 rund × 3 pytania
-        correctAnswers: myScore,
-        accuracy: Math.round((myScore / 15) * 100),
-        flashPoints,
-        experience,
-        opponentName: opponent?.username,
-        opponentAvatar: opponent?.avatar_url,
+    // Konwertuj Duel i Master
+    if (duelMatches) {
+      duelMatches.forEach((duel: any) => {
+        const isPlayer1 = user.id === duel.player1_id;
+        const myScore = isPlayer1 ? duel.player1_score : duel.player2_score;
+        const isWin = duel.winner_id === user.id;
+        const isDraw = duel.winner_id === null;
+        const opponent = isPlayer1 ? duel.player2 : duel.player1;
+        const isMasterMode = !!duel.master_category_id;
+        
+        // Nagród: wygraną 100 FP, remis 50 FP, przegrana 0 FP
+        const flashPoints = isWin ? 100 : (isDraw ? 50 : 0);
+        
+        // Szacunkowe XP (możesz dostosować)
+        const experience = isWin ? 150 : (isDraw ? 75 : 50);
+        
+        unified.push({
+          id: duel.id,
+          type: isMasterMode ? 'master' : 'duel',
+          timestamp: duel.completed_at || duel.created_at,
+          isWin: isWin && !isDraw,
+          isDraw: isDraw,
+          mode: isMasterMode ? 'Master' : 'Duel',
+          modeCode: isMasterMode ? 'master' : 'duel',
+          score: myScore,
+          totalQuestions: 15, // 5 rund × 3 pytania
+          correctAnswers: myScore,
+          accuracy: Math.round((myScore / 15) * 100),
+          flashPoints,
+          experience,
+          opponentName: opponent?.username,
+          opponentAvatar: opponent?.avatar_url,
+          category: duel.master_category || undefined,
+        });
       });
-    });
+    }
     
     // Sortuj po czasie (najnowsze pierwsze) i ogranicz do 15
     unified.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -277,7 +297,7 @@ export default function GameHistory() {
                       {getModeIcon(game.modeCode)}
                     </span>
                     <span>{game.mode}</span>
-                    {game.type === 'duel' && game.opponentName && (
+                    {(game.type === 'duel' || game.type === 'master') && game.opponentName && (
                       <span style={{ marginLeft: '8px', color: '#888', fontSize: '13px' }}>
                         vs {game.opponentName}
                       </span>
@@ -293,7 +313,7 @@ export default function GameHistory() {
                   
                   <div className="history-score">
                     <span className="score-main">{game.score}</span>
-                    <span className="score-label">{game.type === 'duel' ? 'prawidłowych' : 'punktów'}</span>
+                    <span className="score-label">{(game.type === 'duel' || game.type === 'master') ? 'prawidłowych' : 'punktów'}</span>
                   </div>
                   
                   <div className="history-stats">

@@ -108,7 +108,8 @@ export async function getUserSuggestions(
       .from('suggested_questions')
       .select(`
         *,
-        category:categories(id, name, icon_emoji)
+        category:categories(id, name, icon_emoji),
+        reviewer:users!suggested_questions_reviewed_by_fkey(id, username)
       `)
       .eq('author_id', userId)
       .order('created_at', { ascending: false });
@@ -269,7 +270,7 @@ export async function updateSuggestion(
         updated_at: new Date().toISOString(),
       })
       .eq('id', suggestionId)
-      .eq('status', 'pending'); // Można edytować tylko pending
+      .in('status', ['pending', 'rejected']); // Edycja dozwolona dla pending oraz rejected
 
     if (error) {
       console.error('❌ Error updating suggestion:', error);
@@ -305,6 +306,40 @@ export async function deleteSuggestion(
   } catch (error) {
     console.error('❌ Error in deleteSuggestion:', error);
     return { success: false, error: 'Nie udało się usunąć propozycji' };
+  }
+}
+
+// ========================================
+// RE-SUBMISSION
+// ========================================
+
+/**
+ * Wyślij ponownie odrzuconą propozycję po edycji
+ * Ustawia status na 'pending' i aktualizuje pola
+ */
+export async function resubmitSuggestion(
+  suggestionId: string,
+  updates: Partial<CreateSuggestionData>
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from('suggested_questions')
+      .update({
+        ...updates,
+        status: 'pending',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', suggestionId)
+      .eq('status', 'rejected');
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Error in resubmitSuggestion:', error);
+    return { success: false, error: 'Nie udało się wysłać ponownie propozycji' };
   }
 }
 
