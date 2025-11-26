@@ -45,8 +45,7 @@ export default defineConfig({
       '@pages': path.resolve(__dirname, './src/pages'),
       '@services': path.resolve(__dirname, './src/services'),
       '@utils': path.resolve(__dirname, './src/utils'),
-      // Shim problematic Emotion polyfill to avoid runtime crash
-      '@emotion/use-insertion-effect-with-fallbacks': path.resolve(__dirname, './src/shims/emotion-insertion-shim.ts'),
+      // Remove Emotion polyfill shim; React 18 should work with default module
       // Hard alias React to a single path to avoid duplicate instances
       'react': path.resolve(__dirname, 'node_modules/react'),
       'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
