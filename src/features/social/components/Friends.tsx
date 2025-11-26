@@ -13,7 +13,7 @@ import {
   type Friend,
   type FriendRequest
 } from '@/services/friendService';
-import { createDuelChallenge } from '@/services/duelService';
+// Removed unused import to satisfy TypeScript
 import { getDisplayAvatar } from '@/utils/avatar';
 import '@/styles/ui.css';
 import '@/styles/Friends.css';

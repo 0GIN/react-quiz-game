@@ -1255,7 +1255,7 @@ export async function joinRankedQueue(
  */
 export async function leaveRankedQueue(userId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const { data, error } = await supabase.rpc('leave_ranked_queue', {
+    const { error } = await supabase.rpc('leave_ranked_queue', {
       p_user_id: userId,
     });
 

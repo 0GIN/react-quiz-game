@@ -88,7 +88,8 @@ export default function DuelChallenge() {
         user.id,
         selectedFriend.friend_id,
         message || undefined,
-        isMasterMode ? selectedCategoryId : undefined
+        // Ensure undefined is passed when category is null
+        isMasterMode ? (selectedCategoryId ?? undefined) : undefined
       );
 
       if (result.success) {

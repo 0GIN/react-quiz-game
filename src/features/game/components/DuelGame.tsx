@@ -87,7 +87,7 @@ export default function DuelGame() {
     loadDuelData();
 
     // Subskrybuj zmiany w pojedynku
-    const unsubscribe = subscribeToDuelMatch(matchId, async (updatedDuel) => {
+    const unsubscribe = subscribeToDuelMatch(matchId!, async (updatedDuel) => {
       console.log('🔄 Duel updated via realtime:', updatedDuel);
       
       // Jeśli gra już zakończona, nie rób nic więcej (zapobiega zapętleniu)
@@ -138,8 +138,8 @@ export default function DuelGame() {
 
     try {
       const [duelData, roundsData, categoriesData] = await Promise.all([
-        getDuelDetails(matchId),
-        getDuelRounds(matchId),
+        getDuelDetails(matchId!),
+        getDuelRounds(matchId!),
         getRandomCategories(), // 2 losowe kategorie
       ]);
 
@@ -209,7 +209,7 @@ export default function DuelGame() {
           // Auto-wybierz master kategorię
           setPhase('loading');
           const result = await selectCategoryForRound(
-            matchId,
+            matchId!,
             currentRoundNumber,
             duelData.master_category_id,
             user.id
@@ -217,7 +217,7 @@ export default function DuelGame() {
           
           if (result.success) {
             console.log('✅ Master category auto-selected');
-            await determinePhase(duelData, await getDuelRounds(matchId));
+            await determinePhase(duelData, await getDuelRounds(matchId!));
           } else {
             console.error('❌ Failed to select master category:', result.error);
             setPhase('waiting_opponent');
@@ -453,7 +453,7 @@ export default function DuelGame() {
 
     try {
       const result = await selectCategoryForRound(
-        matchId,
+        matchId!,
         duel.current_round,
         category.id,
         user.id
@@ -580,7 +580,7 @@ export default function DuelGame() {
 
       const result = await submitRoundAnswers(
         currentRound.id,
-        matchId,
+        matchId!,
         user.id,
         allAnswers
       );

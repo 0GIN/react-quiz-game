@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@features/auth/hooks/useAuth';
 import { getGameHistory } from '@/services/gameService';
-import { getDuelHistory, type DuelMatch } from '@/services/duelService';
+// Removed unused imports to satisfy TypeScript
 import { supabase } from '@/lib/supabase';
 import { Card, MaterialIcon } from '@shared/ui';
 import '@/styles/ui.css';
