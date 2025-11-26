@@ -12,13 +12,13 @@
   "dependencies": {
     "@emotion/react": "11.11.1",
     "@emotion/styled": "11.11.0",
-    "@mui/icons-material": "^7.3.4",
-    "@mui/material": "^7.3.4",
+    "@mui/icons-material": "^5.15.20",
+    "@mui/material": "^5.15.20",
     "@supabase/supabase-js": "^2.76.1",
     "@vercel/analytics": "^1.5.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "react-router-dom": "^7.9.4"
+    "react-router-dom": "^6.22.3"
   },
   "overrides": {
     "@emotion/cache": "11.11.0",
