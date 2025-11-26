@@ -16,8 +16,8 @@
     "@mui/material": "^7.3.4",
     "@supabase/supabase-js": "^2.76.1",
     "@vercel/analytics": "^1.5.0",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
     "react-router-dom": "^7.9.4"
   },
   "overrides": {
@@ -29,8 +29,8 @@
     "@eslint/js": "^9.36.0",
     "@tailwindcss/postcss": "^4.1.17",
     "@types/node": "^24.6.0",
-    "@types/react": "^19.1.16",
-    "@types/react-dom": "^19.1.9",
+    "@types/react": "18.2.66",
+    "@types/react-dom": "18.2.21",
     "@vitejs/plugin-react": "^5.0.4",
     "autoprefixer": "^10.4.22",
     "babel-plugin-transform-remove-console": "^6.9.4",
