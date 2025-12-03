@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@features/auth'
 import { supabase } from '@/lib/supabase'
+import { Card } from '@shared/ui'
 import {
   joinSquadQueue,
   leaveSquadQueue,
@@ -595,17 +596,17 @@ export default function SquadLobby() {
       <div style={{ gridColumn: 'span 12' }}>
         <Card>
           <div style={{ padding: '24px' }}>
-        <h1 style={{
-          fontSize: '36px',
-          fontWeight: 'bold',
-          textAlign: 'center',
-          marginBottom: '12px',
-          background: 'linear-gradient(to right, #3b82f6, #9333ea)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent'
-        }}>
-          ⚔️ SQUAD MODE
-        </h1>
+            <h1 style={{
+              fontSize: '36px',
+              fontWeight: 'bold',
+              textAlign: 'center',
+              marginBottom: '12px',
+              background: 'linear-gradient(to right, #3b82f6, #9333ea)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            }}>
+              ⚔️ SQUAD MODE
+            </h1>
 
         <p style={{
           textAlign: 'center',
@@ -618,119 +619,118 @@ export default function SquadLobby() {
 rywają najlepsi!
         </p>
 
-        {/* Status panel - similar to Duel */}
-        <div style={{
-          padding: '16px',
-          background: 'rgba(255,255,255,0.02)',
-          border: '1px solid rgba(255,255,255,0.05)',
-          borderRadius: '12px',
-          marginBottom: '20px'
-        }}>
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center'
-          }}>
-            <div>
-              <div style={{ color: '#E0E0E0', fontWeight: 600, marginBottom: '4px' }}>
-                {selectedFriend 
-                  ? `👥 W drużynie z: ${selectedFriend.friend.username}` 
-                  : '🎲 Losowe dopasowanie'}
-              </div>
-              <div style={{ color: '#B0B0B0', fontSize: '14px' }}>
-                {selectedFriend 
-                  ? 'Gotowi do walki 2v2' 
-                  : 'Znajdziemy dla Ciebie partnera i przeciwników'}
+            {/* Status panel - similar to Duel */}
+            <div style={{
+              padding: '16px',
+              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid rgba(255,255,255,0.05)',
+              borderRadius: '12px',
+              marginBottom: '20px'
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center'
+              }}>
+                <div>
+                  <div style={{ color: '#E0E0E0', fontWeight: 600, marginBottom: '4px' }}>
+                    {selectedFriend 
+                      ? `👥 W drużynie z: ${selectedFriend.friend.username}` 
+                      : '🎲 Losowe dopasowanie'}
+                  </div>
+                  <div style={{ color: '#B0B0B0', fontSize: '14px' }}>
+                    {selectedFriend 
+                      ? 'Gotowi do walki 2v2' 
+                      : 'Znajdziemy dla Ciebie partnera i przeciwników'}
+                  </div>
+                </div>
+                {!selectedFriend ? (
+                  <button
+                    onClick={handleInviteFriend}
+                    style={{
+                      padding: '10px 20px',
+                      background: 'rgba(59, 130, 246, 0.1)',
+                      border: '1px solid rgba(59, 130, 246, 0.3)',
+                      borderRadius: '8px',
+                      color: '#3b82f6',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    👥 Zaproś znajomego
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setSelectedFriend(null)}
+                    style={{
+                      padding: '10px 20px',
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      borderRadius: '8px',
+                      color: '#ef4444',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    ✕ Usuń z drużyny
+                  </button>
+                )}
               </div>
             </div>
-            {!selectedFriend ? (
+
+            {/* Start button */}
+            <div style={{ textAlign: 'center' }}>
               <button
-                onClick={handleInviteFriend}
+                onClick={handleJoinQueue}
+                disabled={loading}
                 style={{
-                  padding: '10px 20px',
-                  background: 'rgba(59, 130, 246, 0.1)',
-                  border: '1px solid rgba(59, 130, 246, 0.3)',
-                  borderRadius: '8px',
-                  color: '#3b82f6',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  fontSize: '14px'
+                  background: 'linear-gradient(to right, #22c55e, #10b981)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '18px 60px',
+                  fontSize: '20px',
+                  fontWeight: 'bold',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.7 : 1,
+                  boxShadow: '0 4px 16px rgba(34, 197, 94, 0.3)',
+                  transition: 'all 0.3s'
+                }}
+                onMouseEnter={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.transform = 'translateY(-2px)'
+                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(34, 197, 94, 0.4)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(34, 197, 94, 0.3)'
                 }}
               >
-                👥 Zaproś znajomego
+                {loading ? 'Dołączanie...' : 'DOŁĄCZ DO KOLEJKI'}
               </button>
-            ) : (
-              <button
-                onClick={() => setSelectedFriend(null)}
+            </div>
+
+            {/* Friend selector modal */}
+            {showFriendSelector && (
+              <div
                 style={{
-                  padding: '10px 20px',
-                  background: 'rgba(239, 68, 68, 0.1)',
-                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                  borderRadius: '8px',
-                  color: '#ef4444',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  fontSize: '14px'
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: 'rgba(0, 0, 0, 0.8)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 1000,
+                  padding: '20px'
                 }}
+                onClick={() => setShowFriendSelector(false)}
               >
-                ✕ Usuń z drużyny
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Start button */}
-        <div style={{ textAlign: 'center' }}>
-          <button
-            onClick={handleJoinQueue}
-            disabled={loading}
-            style={{
-              background: 'linear-gradient(to right, #22c55e, #10b981)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '12px',
-              padding: '18px 60px',
-              fontSize: '20px',
-              fontWeight: 'bold',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.7 : 1,
-              boxShadow: '0 4px 16px rgba(34, 197, 94, 0.3)',
-              transition: 'all 0.3s'
-            }}
-            onMouseEnter={(e) => {
-              if (!loading) {
-                e.currentTarget.style.transform = 'translateY(-2px)'
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(34, 197, 94, 0.4)'
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)'
-              e.currentTarget.style.boxShadow = '0 4px 16px rgba(34, 197, 94, 0.3)'
-            }}
-          >
-            {loading ? 'Dołączanie...' : 'DOŁĄCZ DO KOLEJKI'}
-          </button>
-        </div>
-      </div>
-
-      {/* Friend selector modal */}
-      {showFriendSelector && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '20px'
-          }}
-          onClick={() => setShowFriendSelector(false)}
-        >
           <div
             style={{
               background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',

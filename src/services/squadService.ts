@@ -366,8 +366,8 @@ export function subscribeToSquadRound(
         filter: `match_id=eq.${matchId}`
       },
       (payload) => {
-        if ((payload.new as SquadRound).round_number === roundNumber) {
-          onUpdate(payload)
+        if (payload.eventType === 'UPDATE') {
+          onUpdate(payload as RealtimePostgresChangesPayload<SquadRound>)
         }
       }
     )
