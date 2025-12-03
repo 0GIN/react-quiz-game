@@ -6,6 +6,7 @@ import { createDuelChallenge } from '@/services/duelService'
 import { getGameHistory } from '@/services/gameService'
 import { supabase } from '@/lib/supabase'
 import { Layout, Card, MaterialIcon, Spinner } from '@shared/ui'
+import BannerSelector from './BannerSelector'
 import '@/styles/ui.css'
 
 const AVATAR_OPTIONS = [
@@ -43,6 +44,8 @@ export default function Profile() {
   const [rankByFP, setRankByFP] = useState<number | null>(null)
   const [rankByLevel, setRankByLevel] = useState<number | null>(null)
   const [showAvatarModal, setShowAvatarModal] = useState(false)
+  const [selectedBanner, setSelectedBanner] = useState('')
+  const [showBannerSelector, setShowBannerSelector] = useState(false)
 
   const profileUserId = userId || user?.id
   const isOwnProfile = user?.id === profileUserId
@@ -64,6 +67,7 @@ export default function Profile() {
       setEditedBio(profile.bio || '')
       setEditedUsername(profile.user.username)
       setSelectedAvatar(profile.user.avatar_url || '😀')
+      setSelectedBanner(profile.user.banner_url || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)')
     }
   }, [profile])
 
@@ -247,6 +251,13 @@ export default function Profile() {
           .eq('id', user.id)
         if (avatarError) throw avatarError
       }
+      if (selectedBanner !== profile?.user.banner_url) {
+        const { error: bannerError } = await supabase
+          .from('users')
+          .update({ banner_url: selectedBanner })
+          .eq('id', user.id)
+        if (bannerError) throw bannerError
+      }
       if (editedBio !== profile?.bio) {
         const bioResult = await updateBio(user.id, editedBio)
         if (!bioResult.success) {
@@ -270,6 +281,7 @@ export default function Profile() {
       setEditedBio(profile.bio || '')
       setEditedUsername(profile.user.username)
       setSelectedAvatar(profile.user.avatar_url || '😀')
+      setSelectedBanner(profile.user.banner_url || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)')
     }
     setIsEditMode(false)
     setSaveError(null)
@@ -361,7 +373,38 @@ export default function Profile() {
           )}
 
           {/* Profile Header */}
-          <section className="hero relative overflow-hidden">
+          <section className="hero relative overflow-hidden" style={{
+            background: isEditMode ? selectedBanner : (userData.banner_url || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'),
+            position: 'relative'
+          }}>
+            {/* Edit banner button */}
+            {isEditMode && (
+              <button
+                onClick={() => setShowBannerSelector(true)}
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  padding: '8px 16px',
+                  background: 'rgba(0, 0, 0, 0.6)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '8px',
+                  color: '#fff',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '14px',
+                  zIndex: 10
+                }}
+                title="Zmień tło baneru"
+              >
+                <MaterialIcon icon="palette" size={18} />
+                Zmień tło
+              </button>
+            )}
             <div className="hero-inner py-6">
             <div className="flex items-center justify-between">
               {/* Left side: Avatar + Info */}
@@ -1116,6 +1159,15 @@ export default function Profile() {
           </div>
         </div>
       </main>
+
+      {/* Banner Selector Modal */}
+      {showBannerSelector && (
+        <BannerSelector
+          currentBanner={selectedBanner}
+          onSelect={(banner) => setSelectedBanner(banner)}
+          onClose={() => setShowBannerSelector(false)}
+        />
+      )}
     </Layout>
   )
 }

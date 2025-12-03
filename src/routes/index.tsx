@@ -28,7 +28,10 @@ const AdminPanel = lazy(() => import('@/features/admin/components/AdminPanel'));
 const DuelLobby = lazy(() => import('@/features/game/components/DuelLobby'));
 const DuelChallenge = lazy(() => import('@/features/game/components/DuelChallenge'));
 const DuelGame = lazy(() => import('@/features/game/components/DuelGame'));
+const SquadLobby = lazy(() => import('@/features/game/components/SquadLobby'));
+const SquadGame = lazy(() => import('@/features/game/components/SquadGame'));
 const MasterMode = lazy(() => import('@/pages/MasterMode'));
+const Achievements = lazy(() => import('@/pages/Achievements'));
 
 // Route guards
 import ProtectedRoute from '@/shared/components/ProtectedRoute';
@@ -97,6 +100,14 @@ export const routes: RouteObject[] = [
     ),
   },
   {
+    path: ROUTES.ACHIEVEMENTS,
+    element: (
+      <ProtectedRoute>
+        <Achievements />
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: ROUTES.HISTORY,
     element: (
       <ProtectedRoute>
@@ -157,6 +168,22 @@ export const routes: RouteObject[] = [
     element: (
       <ProtectedRoute>
         <DuelGame />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: ROUTES.SQUAD,
+    element: (
+      <ProtectedRoute>
+        <SquadLobby />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: ROUTES.SQUAD_GAME,
+    element: (
+      <ProtectedRoute>
+        <SquadGame />
       </ProtectedRoute>
     ),
   },

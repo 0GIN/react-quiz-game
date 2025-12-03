@@ -48,6 +48,7 @@ export interface FullUserProfile extends UserProfile {
     username: string;
     email: string;
     avatar_url: string;
+    banner_url: string | null;
     flash_points: number;
     level: number;
     experience: number;

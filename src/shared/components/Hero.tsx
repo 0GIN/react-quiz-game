@@ -32,7 +32,7 @@ export default function Hero() {
             <div className="game-mode-title">Duel</div>
             <div className="game-mode-description">1v1 - kto jest lepszy?</div>
           </div>
-          <div className="game-mode-card">
+          <div className="game-mode-card" onClick={() => navigate('/squad')} style={{ cursor: 'pointer' }}>
             <img src={squadLogo} alt="" className="game-mode-icon-img" />
             <div className="game-mode-title">Squad</div>
             <div className="game-mode-description">2v2 drużynowa dominacja</div>

@@ -197,6 +197,11 @@ export default function Sidebar() {
           </Link>
         </li>
         <li>
+          <Link to="/achievements" className={`nav-item ${isActive('/achievements') ? 'active' : ''}`}>
+            <EmojiEventsIcon className="nav-icon" sx={{ color: '#FFD700' }} /> Osiągnięcia
+          </Link>
+        </li>
+        <li>
           <Link to="/history" className={`nav-item ${isActive('/history') ? 'active' : ''}`}>
             <HistoryIcon className="nav-icon" /> Historia Gier
           </Link>

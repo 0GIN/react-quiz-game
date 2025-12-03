@@ -30,6 +30,8 @@ const Settings = lazy(() => import('@pages/Settings'))
 const DuelLobby = lazy(() => import('@features/game/components/DuelLobby'))
 const DuelChallenge = lazy(() => import('@features/game/components/DuelChallenge'))
 const DuelGame = lazy(() => import('@features/game/components/DuelGame'))
+const SquadLobby = lazy(() => import('@features/game/components/SquadLobby'))
+const SquadGame = lazy(() => import('@features/game/components/SquadGame'))
 const MasterMode = lazy(() => import('@pages/MasterMode'))
 
 createRoot(document.getElementById('root')!).render(
@@ -53,6 +55,10 @@ createRoot(document.getElementById('root')!).render(
               <Route path="/duel" element={<ProtectedRoute><DuelLobby /></ProtectedRoute>} />
               <Route path="/duel/challenge" element={<ProtectedRoute><DuelChallenge /></ProtectedRoute>} />
               <Route path="/duel/:matchId" element={<ProtectedRoute><DuelGame /></ProtectedRoute>} />
+              
+              {/* Squad */}
+              <Route path="/squad" element={<ProtectedRoute><SquadLobby /></ProtectedRoute>} />
+              <Route path="/squad/:matchId" element={<ProtectedRoute><SquadGame /></ProtectedRoute>} />
               
               {/* Master Mode */}
               <Route path="/master" element={<ProtectedRoute><MasterMode /></ProtectedRoute>} />

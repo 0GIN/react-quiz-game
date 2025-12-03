@@ -15,6 +15,8 @@ export const ROUTES = {
   DUEL: '/duel',
   DUEL_CHALLENGE: '/duel/challenge',
   DUEL_GAME: '/duel/:matchId',
+  SQUAD: '/squad',
+  SQUAD_GAME: '/squad/:matchId',
   MASTER: '/master',
   RULES: '/rules',
   
@@ -24,6 +26,7 @@ export const ROUTES = {
   RANKING: '/ranking',
   HISTORY: '/history',
   TOP_PLAYERS: '/top-players',
+  ACHIEVEMENTS: '/achievements',
   
   // Shop
   SHOP: '/shop',
